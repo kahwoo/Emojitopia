@@ -143,7 +143,27 @@
         .modal-content h2 {
             margin-top: 0;
             color: #fff;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
         }
+        .modal-content h2 #techTreeFromCityButton {
+            position: absolute; 
+            left: 0; 
+            margin-left: 0; 
+            padding: 5px 10px; 
+            font-size: 0.8em; 
+            box-shadow: none; 
+            background-color: #2196F3; 
+        }
+        .modal-content h2 #techTreeFromCityButton:hover {
+            background-color: #1e88e5;
+        }
+        .modal-content h2 #techTreeFromCityButton:active {
+            background-color: #1565C0;
+        }
+
         .modal-content .item {
             display: flex;
             justify-content: space-between;
@@ -231,7 +251,7 @@
 
         #messageBox {
             position: fixed;
-            bottom: 20px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             background-color: rgba(0,0,0,0.7);
@@ -267,6 +287,10 @@
             border-radius: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
+        #winModal .modal-content .button-group {
+            margin-top: 20px;
+            justify-content: center;
+        }
 
         #unitsWithMovesList {
             margin-top: 15px;
@@ -277,6 +301,20 @@
         }
         #unitsWithMovesList p {
             margin: 5px 0;
+        }
+
+        #confirmEndTurnModal .modal-content .checkbox-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        #confirmEndTurnModal .modal-content .checkbox-container input {
+            margin-right: 8px;
+            width: auto; 
+            height: auto; 
         }
     </style>
 </head>
@@ -290,6 +328,7 @@
             <div class="button-group">
                 <button id="undoButton" class="game-button">Undo</button>
                 <button id="techTreeButton" class="game-button">Tech Tree</button>
+                <button id="nextLevelButton" class="game-button" style="display: none;">Next Level</button>
                 <button id="endTurnButton" class="game-button">End Turn</button>
             </div>
         </div>
@@ -308,10 +347,16 @@
                 <button id="giveUpButton" class="game-button">Give Up</button>
             </div>
             <div class="item">
-                <button id="saveLevelButton" class="game-button">Save Level</button>
+                <button id="saveLevelButton" class="game-button">Save Current Game</button>
             </div>
             <div class="item">
-                <button id="loadLevelButton" class="game-button">Load Level</button>
+                <button id="loadLevelButton" class="game-button">Load Saved Game</button>
+            </div>
+            <div class="item">
+                <button id="saveInitialMapButton" class="game-button">Save Initial Map</button>
+            </div>
+            <div class="item">
+                <button id="loadInitialMapButton" class="game-button">Load Initial Map</button>
             </div>
         </div>
     </div>
@@ -360,7 +405,10 @@
     <div id="cityMenuModal" class="modal">
         <div class="modal-content">
             <span class="close-button city-menu-close">&times;</span>
-            <h2>City Actions <button id="techTreeFromCityButton" class="game-button" style="float: right; margin-top: -5px;">Tech Tree</button></h2>
+            <h2>
+                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
+                City Actions 
+            </h2>
             <div id="cityActionsList">
                 <div class="item">
                     <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
@@ -397,6 +445,10 @@
             <h2>End Turn?</h2>
             <p>Some units still have actions remaining. Are you sure you want to end your turn?</p>
             <div id="unitsWithMovesList"></div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="dontAskAgainCheckbox">
+                <label for="dontAskAgainCheckbox">Don't ask me again</label>
+            </div>
             <div class="button-group" style="justify-content: center; margin-top: 20px;">
                 <button id="confirmEndTurnYes" class="game-button">Yes</button>
                 <button id="confirmEndTurnNo" class="game-button">No</button>
@@ -409,7 +461,10 @@
     <div id="winModal" class="modal">
         <div class="modal-content">
             <p>YOU WIN!</p>
-            <button id="winModalCloseButton" class="game-button">Close</button>
+            <div class="button-group">
+                <button id="winModalNewGameButton" class="game-button">New Game</button>
+                <button id="winModalKeepPlayingButton" class="game-button">Keep Playing</button>
+            </div>
         </div>
     </div>
 
@@ -431,6 +486,7 @@
         const closeCityMenuButton = document.querySelector('.city-menu-close'); 
         const confirmEndTurnYesButton = document.getElementById('confirmEndTurnYes');
         const confirmEndTurnNoButton = document.getElementById('confirmEndTurnNo');
+        const dontAskAgainCheckbox = document.getElementById('dontAskAgainCheckbox'); 
         const buyMountainClimbingButton = document.getElementById('buyMountainClimbing');
         const buySwimmingButton = document.getElementById('buySwimming');
         const buyHorseRidingButton = document.getElementById('buyHorseRiding');
@@ -447,15 +503,18 @@
         const hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
         const optionsModal = document.getElementById('optionsModal');
         const closeOptionsButton = document.querySelector('.options-close');
-        const giveUpButton = document.getElementById('giveUpButton'); // Renamed from restartLevelButton
+        const giveUpButton = document.getElementById('giveUpButton'); 
         const saveLevelButton = document.getElementById('saveLevelButton');     
         const loadLevelButton = document.getElementById('loadLevelButton');     
+        const saveInitialMapButton = document.getElementById('saveInitialMapButton');
+        const loadInitialMapButton = document.getElementById('loadInitialMapButton');
         const techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
         const messageBox = document.getElementById('messageBox');
         const winModal = document.getElementById('winModal');
-        const winModalCloseButton = document.getElementById('winModalCloseButton');
+        const winModalNewGameButton = document.getElementById('winModalNewGameButton'); 
+        const winModalKeepPlayingButton = document.getElementById('winModalKeepPlayingButton'); 
+        const nextLevelButton = document.getElementById('nextLevelButton'); 
         const unitsWithMovesList = document.getElementById('unitsWithMovesList');
-
 
         const carryingCapacity2Item = document.getElementById('carryingCapacity2Item');
         const carryingCapacity3Item = document.getElementById('carryingCapacity3Item');
@@ -476,7 +535,6 @@
 
         const buyArcherTechButton = document.getElementById('buyArcherTech');
         const buyDefenderTechButton = document.getElementById('buyDefenderTech');
-
 
         const TILE_SIZE = 64;
         const MAP_SIZE = 10;
@@ -503,9 +561,10 @@
 
         let currentWinCondition = null;
         let winConditionTarget = 0;
-        let hasGameStartedPlaying = false; // New flag to control win condition check
+        let hasGameStartedPlaying = false; 
 
         let nextUnitId = 1;
+        let dontAskAgainForEndTurn = localStorage.getItem('dontAskAgainEndTurn') === 'true'; 
 
         const TERRAIN_COLORS = {
             plains: '#7cb342',
@@ -517,7 +576,7 @@
 
         const TERRAIN_MOVE_COST = {
             plains: 1,
-            forest: 2,
+            forest: 2, 
             mountain: 1,
             water: 1,
             river: 1
@@ -559,16 +618,20 @@
             { type: 'defeatAllEnemies', text: 'Defeat all enemy units!' }
         ];
 
-        function initGame() {
+        function initGame(initialMapState = null) {
             canvas.width = MAP_SIZE * TILE_SIZE;
             canvas.height = MAP_SIZE * TILE_SIZE;
 
             winModal.style.display = 'none';
-            hasGameStartedPlaying = false; // Reset flag on new game init
+            hasGameStartedPlaying = false; 
+            nextLevelButton.style.display = 'none'; 
 
             if (typeof __initial_game_state !== 'undefined' && __initial_game_state) {
                 loadGameState(__initial_game_state);
-            } else {
+            } else if (initialMapState) {
+                initGameWithMap(initialMapState);
+            }
+            else {
                 initGameDefaults();
             }
             requestAnimationFrame(gameLoop); 
@@ -576,7 +639,8 @@
 
         function initGameDefaults() {
             winModal.style.display = 'none';
-            hasGameStartedPlaying = false; // Reset flag on new game defaults
+            hasGameStartedPlaying = false; 
+            nextLevelButton.style.display = 'none'; 
 
             resources.stars = 2;
             techTree = {
@@ -606,49 +670,135 @@
             updateAllUI();
         }
 
+        function initGameWithMap(initialMapState) {
+            if (!initialMapState || !Array.isArray(initialMapState.mapData) || initialMapState.mapData.length === 0 ||
+                !Array.isArray(initialMapState.mapVisibility) || initialMapState.mapVisibility.length === 0 ||
+                !Array.isArray(initialMapState.cities)) {
+                showMessage("Error: Invalid map data format. Starting a new random game.");
+                initGameDefaults();
+                return;
+            }
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                if (!Array.isArray(initialMapState.mapData[y]) || initialMapState.mapData[y].length === 0 ||
+                    !Array.isArray(initialMapState.mapVisibility[y]) || initialMapState.mapVisibility[y].length === 0) {
+                    showMessage("Error: Malformed map data. Starting a new random game.");
+                    initGameDefaults();
+                    return;
+                }
+            }
+
+            winModal.style.display = 'none';
+            hasGameStartedPlaying = false;
+            nextLevelButton.style.display = 'none';
+
+            resources.stars = 2;
+            techTree = {
+                mountainClimbing: false,
+                swimming: false,
+                horseRiding: false,
+                archerTech: false,
+                defenderTech: false,
+                carryingCapacityLevel: 1
+            };
+
+            map = initialMapState.mapData.map((row, y) => row.map((tileData, x) => ({
+                type: tileData.type,
+                maxVisibilityAchieved: initialMapState.mapVisibility[y][x],
+                city: tileData.city,
+                village: tileData.village,
+                resource: tileData.resource,
+                mountainEmoji: tileData.mountainEmoji || null,
+                unit: null
+            })));
+            cities = initialMapState.cities.map(city => ({ ...city }));
+
+            units = [];
+            turnCount = 1;
+            selectedUnit = null;
+            highlightTiles = [];
+            turnActions = [];
+            nextUnitId = 1;
+
+            const homeCity = cities.find(c => c.isHomeBase);
+            if (homeCity) {
+                const explorer = { 
+                    id: nextUnitId++,
+                    unitType: 'explorer', 
+                    x: homeCity.x, 
+                    y: homeCity.y, 
+                    movesRemaining: UNIT_DEFINITIONS.explorer.moves, 
+                    selected: false, 
+                    starsCarried: 0, 
+                    health: UNIT_DEFINITIONS.explorer.health, 
+                    maxHealth: UNIT_DEFINITIONS.explorer.health,
+                    attack: UNIT_DEFINITIONS.explorer.attack, 
+                    defense: UNIT_DEFINITIONS.explorer.defense,
+                    range: UNIT_DEFINITIONS.explorer.range,
+                    hasAttackedThisTurn: false, 
+                    justTrained: false,
+                    kills: 0,
+                    icon: UNIT_DEFINITIONS.explorer.icon
+                };
+                units.push(explorer);
+                map[homeCity.y][homeCity.x].unit = explorer;
+            } else {
+                placeInitialElements();
+            }
+
+            placeEnemy(3);
+
+            selectWinCondition();
+
+            updateVisibility();
+            updateAllUI();
+            showMessage("Initial map loaded successfully! New game started.");
+        }
+
         function loadGameState(gameStateJson) {
             try {
                 winModal.style.display = 'none';
-                hasGameStartedPlaying = false; // Reset flag on load
+                hasGameStartedPlaying = false; 
+                nextLevelButton.style.display = 'none'; 
 
                 const state = JSON.parse(gameStateJson);
 
-                map = state.map.map(row => row.map(tile => ({
-                    type: tile.type,
-                    maxVisibilityAchieved: tile.maxVisibilityAchieved,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource,
-                    mountainEmoji: tile.mountainEmoji || null,
-                    unit: null
+                map = state.mapData.map((row, y) => row.map((tileData, x) => ({
+                    type: tileData.type,
+                    maxVisibilityAchieved: state.mapVisibility[y][x], 
+                    city: tileData.city,
+                    village: tileData.village,
+                    resource: tileData.resource,
+                    mountainEmoji: tileData.mountainEmoji || null,
+                    unit: null 
                 })));
 
-                units = state.units.map(unit => ({ ...unit }));
+                units = state.units.map(unit => ({ ...unit })); 
 
                 units.forEach(unit => {
                     if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
-                        map[unit.y][unit.x].unit = unit;
-                        unit.icon = unit.icon || UNIT_DEFINITIONS[unit.unitType].icon;
+                        map[unit.y][unit.x].unit = unit; 
+                        unit.icon = unit.icon || UNIT_DEFINITIONS[unit.unitType].icon; 
                     } else {
                         units = units.filter(u => u.id !== unit.id);
                     }
                 });
 
-                cities = state.cities.map(city => ({ ...city }));
-
+                cities = state.cities.map(city => ({ ...city })); 
                 resources = { ...state.resources };
                 techTree = { ...state.techTree };
                 turnCount = state.turnCount;
-                selectedUnit = null;
-                highlightTiles = [];
-                turnActions = [];
+                currentWinCondition = state.currentWinCondition;
+                winConditionTarget = state.winConditionTarget;
+                hasGameStartedPlaying = state.hasGameStartedPlaying; 
 
-                if (state.units.length > 0) {
-                    nextUnitId = Math.max(...state.units.map(u => u.id)) + 1;
+                if (units.length > 0) {
+                    nextUnitId = Math.max(...units.map(u => u.id)) + 1;
                 } else {
                     nextUnitId = 1;
                 }
 
+                selectedUnit = null;
                 if (state.selectedUnitId !== null) {
                     selectedUnit = units.find(u => u.id === state.selectedUnitId);
                     if (selectedUnit) {
@@ -656,16 +806,12 @@
                         updateHighlightTiles(selectedUnit);
                     }
                 }
-
-                currentWinCondition = state.currentWinCondition;
-                winConditionTarget = state.winConditionTarget;
-                hasGameStartedPlaying = state.hasGameStartedPlaying; // Restore the flag
-
-                updateVisibility();
+                
                 updateAllUI();
                 drawGame();
+                showMessage("Game state loaded successfully!");
             } catch (e) {
-                showMessage("Failed to load game state. Starting a new game.");
+                showMessage("Failed to load game state. Invalid format or data. Starting a new game.");
                 initGameDefaults();
             }
         }
@@ -687,7 +833,6 @@
         }
 
         function checkWinCondition() {
-            // Only check for win if the game has started playing (i.e., at least one turn completed)
             if (!hasGameStartedPlaying) return false;
 
             switch (currentWinCondition.type) {
@@ -720,8 +865,9 @@
             for (let y = 0; y < MAP_SIZE; y++) {
                 map[y] = [];
                 for (let x = 0; x < MAP_SIZE; x++) {
+                    let type = getRandomTerrainType();
                     map[y][x] = {
-                        type: getRandomTerrainType(),
+                        type: type,
                         maxVisibilityAchieved: 0, 
                         city: false,
                         village: false,
@@ -957,13 +1103,13 @@
                     ctx.strokeRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                 }
                 if (tile.unit.starsCarried > 0) {
+                    ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.7, screenY + TILE_SIZE * 0.75); 
                     ctx.font = `${TILE_SIZE * 0.3}px Arial`;
                     ctx.fillStyle = '#FFD700';
-                    ctx.fillText('★', screenX + TILE_SIZE * 0.75, screenY + TILE_SIZE * 0.25);
-                    ctx.font = `${TILE_SIZE * 0.25}px Arial`;
-                    ctx.fillStyle = '#fff';
-                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.75, screenY + TILE_SIZE * 0.75);
-                    ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                    ctx.fillText('★', screenX + TILE_SIZE * 0.85, screenY + TILE_SIZE * 0.25); 
+                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; 
                 }
                 ctx.font = `${TILE_SIZE * 0.25}px Arial`;
                 ctx.fillStyle = '#FF0000'; 
@@ -1005,7 +1151,6 @@
                 else if (tile.unit && tile.unit.unitType !== 'enemy') {
                     drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear);
                 }
-
 
                 if (tile.maxVisibilityAchieved === 1) { 
                     ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
@@ -1142,7 +1287,19 @@
             }
 
             if (selectedUnit) {
-                let unitStatus = `${selectedUnit.unitType} (${selectedUnit.movesRemaining} moves)`;
+                let unitStatus = `${selectedUnit.unitType} (`;
+                if (selectedUnit.justTrained) {
+                    unitStatus += `New unit, cannot move this turn)`;
+                } else {
+                    unitStatus += `${selectedUnit.movesRemaining} moves`;
+                    if (selectedUnit.hasAttackedThisTurn) {
+                        unitStatus += `, attacked`;
+                    } else if (canUnitAttack(selectedUnit)) {
+                        unitStatus += `, can attack`;
+                    }
+                    unitStatus += `)`;
+                }
+
                 if (selectedUnit.starsCarried > 0) {
                     unitStatus += ` (Carrying ★ ${selectedUnit.starsCarried})`;
                 }
@@ -1153,14 +1310,6 @@
                     }
                     if (selectedUnit.kills > 0) {
                         unitStatus += ` | Kills: ${selectedUnit.kills}`;
-                    }
-                    if (canUnitAttack(selectedUnit)) {
-                        unitStatus += ` (Can Attack)`;
-                    } else if (selectedUnit.hasAttackedThisTurn) {
-                        unitStatus += ` (Attacked)`;
-                    }
-                    if (selectedUnit.justTrained) {
-                        unitStatus = `Selected: New unit, cannot move this turn.`;
                     }
                 }
                 hudSelectedUnitInfo.textContent = `Selected: ${unitStatus}`;
@@ -1262,7 +1411,6 @@
             trainDefenderButton.parentElement.style.display = techTree.defenderTech ? 'flex' : 'none';
         }
 
-        // Consolidated UI update function
         function updateAllUI() {
             updateHUD();
             updateTechTreeButtons();
@@ -1300,7 +1448,7 @@
             
             if (tileType === 'forest') {
                 if (unitType === 'archer') {
-                    return TERRAIN_MOVE_COST[tileType];
+                    return 1; 
                 } else {
                     return Infinity;
                 }
@@ -1399,17 +1547,23 @@
 
         function saveStateForUndo() {
             const state = {
-                map: JSON.parse(JSON.stringify(map)),
                 units: JSON.parse(JSON.stringify(units)),
                 cities: JSON.parse(JSON.stringify(cities)),
                 resources: { ...resources },
-                selectedUnitId: selectedUnit ? selectedUnit.id : null,
-                highlightTiles: JSON.parse(JSON.stringify(highlightTiles)),
                 techTree: JSON.parse(JSON.stringify(techTree)),
                 turnCount: turnCount,
                 currentWinCondition: currentWinCondition,
                 winConditionTarget: winConditionTarget,
-                hasGameStartedPlaying: hasGameStartedPlaying 
+                hasGameStartedPlaying: hasGameStartedPlaying,
+                mapData: map.map(row => row.map(tile => ({
+                    type: tile.type,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    mountainEmoji: tile.mountainEmoji 
+                }))),
+                mapVisibility: map.map(row => row.map(tile => tile.maxVisibilityAchieved)),
+                selectedUnitId: selectedUnit ? selectedUnit.id : null,
             };
             turnActions.push(state);
         }
@@ -1417,25 +1571,44 @@
         function undoLastAction() {
             if (turnActions.length > 0) {
                 const restoredState = turnActions.pop();
-                map = restoredState.map;
+                
                 units = restoredState.units;
                 cities = restoredState.cities;
                 resources = restoredState.resources;
-                highlightTiles = restoredState.highlightTiles;
                 techTree = restoredState.techTree;
                 turnCount = restoredState.turnCount;
                 currentWinCondition = restoredState.currentWinCondition;
                 winConditionTarget = restoredState.winConditionTarget;
-                hasGameStartedPlaying = restoredState.hasGameStartedPlaying; 
+                hasGameStartedPlaying = restoredState.hasGameStartedPlaying;
+
+                for (let y = 0; y < MAP_SIZE; y++) {
+                    for (let x = 0; x < MAP_SIZE; x++) {
+                        map[y][x].unit = null; 
+                        map[y][x].type = restoredState.mapData[y][x].type; 
+                        map[y][x].city = restoredState.mapData[y][x].city; 
+                        map[y][x].village = restoredState.mapData[y][x].village; 
+                        map[y][x].resource = restoredState.mapData[y][x].resource; 
+                        map[y][x].mountainEmoji = restoredState.mapData[y][x].mountainEmoji; 
+                        map[y][x].maxVisibilityAchieved = restoredState.mapVisibility[y][x]; 
+                    }
+                }
+                
+                units.forEach(unit => {
+                    if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
+                        map[unit.y][unit.x].unit = unit;
+                    }
+                });
 
                 selectedUnit = null;
                 if (restoredState.selectedUnitId !== null) {
                     selectedUnit = units.find(u => u.id === restoredState.selectedUnitId);
                     if (selectedUnit) {
                         selectedUnit.selected = true;
+                        updateHighlightTiles(selectedUnit);
                     }
                 }
                 updateAllUI();
+                drawGame();
             }
         }
 
@@ -1458,38 +1631,13 @@
 
         function saveGameState() { 
             const gameState = {
-                map: map.map(row => row.map(tile => ({
-                    type: tile.type,
-                    maxVisibilityAchieved: tile.maxVisibilityAchieved,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource,
-                    mountainEmoji: tile.mountainEmoji,
-                    unit: tile.unit ? {
-                        id: tile.unit.id,
-                        unitType: tile.unit.unitType,
-                        x: tile.unit.x,
-                        y: tile.unit.y,
-                        movesRemaining: tile.unit.movesRemaining,
-                        starsCarried: tile.unit.starsCarried,
-                        health: tile.unit.health,
-                        maxHealth: tile.unit.maxHealth,
-                        attack: tile.unit.attack,
-                        defense: tile.unit.defense,
-                        range: tile.unit.range,
-                        hasAttackedThisTurn: tile.unit.hasAttackedThisTurn,
-                        justTrained: tile.unit.justTrained,
-                        kills: tile.unit.kills,
-                        icon: tile.unit.icon
-                    } : null
-                }))),
-                units: units.map(unit => ({
+                units: units.map(unit => ({ 
                     id: unit.id,
                     unitType: unit.unitType,
                     x: unit.x,
                     y: unit.y,
                     movesRemaining: unit.movesRemaining,
-                    selected: unit.selected,
+                    selected: unit.selected, 
                     starsCarried: unit.starsCarried,
                     health: unit.health,
                     maxHealth: unit.maxHealth,
@@ -1501,20 +1649,25 @@
                     kills: unit.kills,
                     icon: unit.icon
                 })),
-                cities: cities,
+                cities: cities, 
                 turnCount: turnCount,
                 resources: { ...resources },
                 techTree: { ...techTree },
                 selectedUnitId: selectedUnit ? selectedUnit.id : null,
                 currentWinCondition: currentWinCondition,
                 winConditionTarget: winConditionTarget,
-                hasGameStartedPlaying: hasGameStartedPlaying 
+                hasGameStartedPlaying: hasGameStartedPlaying,
+                mapData: map.map(row => row.map(tile => ({
+                    type: tile.type,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    mountainEmoji: tile.mountainEmoji 
+                }))),
+                mapVisibility: map.map(row => row.map(tile => tile.maxVisibilityAchieved))
             };
 
             const jsonString = JSON.stringify(gameState, null, 2);
-            console.log("--- GAME STATE SAVE ---");
-            console.log(jsonString);
-            console.log("--- END GAME STATE SAVE ---");
 
             const textarea = document.createElement('textarea');
             textarea.value = jsonString;
@@ -1526,27 +1679,80 @@
                 document.execCommand('copy');
                 showMessage("Game state copied to clipboard!");
             } catch (err) {
-                console.error('Failed to copy text: ', err);
                 showMessage("Failed to copy game state.");
             }
             document.body.removeChild(textarea);
         }
 
         function importGameState() { 
-            const jsonInput = prompt("Paste your game state JSON here:");
-            if (jsonInput) {
-                try {
-                    loadGameState(jsonInput);
-                    showMessage("Game state loaded successfully!");
-                } catch (e) {
-                    showMessage("Invalid game state format. Please try again.");
-                    console.error("Error loading game state:", e);
-                }
-            } else {
+            const jsonInput = prompt("Paste your saved game state JSON here:");
+            if (jsonInput === null) {
                 showMessage("Load cancelled.");
+                return;
+            }
+            if (jsonInput.trim() === "") {
+                showMessage("Invalid input. Load cancelled.");
+                return;
+            }
+
+            try {
+                loadGameState(jsonInput);
+            } catch (e) {
+                showMessage("Failed to load game state. Invalid format or data.");
             }
         }
 
+        function saveInitialMap() {
+            const initialMapState = {
+                mapData: map.map(row => row.map(tile => ({
+                    type: tile.type,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    mountainEmoji: tile.mountainEmoji 
+                }))),
+                mapVisibility: map.map(row => row.map(tile => 0)),
+                cities: cities.map(city => ({ ...city }))
+            };
+
+            const jsonString = JSON.stringify(initialMapState, null, 2);
+
+            const textarea = document.createElement('textarea');
+            textarea.value = jsonString;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showMessage("Initial map state copied to clipboard!");
+            } catch (err) {
+                showMessage("Failed to copy initial map state.");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function loadInitialMap() {
+            const jsonInput = prompt("Paste your initial map state JSON here:");
+            if (jsonInput === null) {
+                showMessage("Load cancelled.");
+                return;
+            }
+            if (jsonInput.trim() === "") {
+                showMessage("Invalid input. Load cancelled.");
+                return;
+            }
+
+            try {
+                const initialMapState = JSON.parse(jsonInput);
+                if (!initialMapState.mapData || !initialMapState.mapVisibility || !initialMapState.cities) {
+                    throw new Error("Missing required map data in JSON.");
+                }
+                initGame(initialMapState);
+            } catch (e) {
+                showMessage("Failed to load initial map. Invalid format or data.");
+            }
+        }
 
         function handleInteractionStart(event) {
             event.preventDefault();
@@ -1565,7 +1771,7 @@
 
             if (interactionStartCoords && interactionStartTile) { 
                 const dist = Math.sqrt(
-                    Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) +
+                    Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) + 
                     Math.pow(currentPointerCoords.y - interactionStartCoords.y, 2) 
                 );
                 if (dist > DRAG_THRESHOLD) {
@@ -1634,7 +1840,7 @@
 
                 if (!unitIsTired) {
                     saveStateForUndo();
-                    selectUnit(unitOnTargetTile);
+                    selectUnit(unitOnTargetTile); 
                     updateHighlightTiles(unitOnTargetTile); 
                     actionCompleted = true;
                 } else {
@@ -1689,7 +1895,6 @@
             const attackerOriginalY = attacker.y;
 
             activeAnimations.push({ type: 'combat', x: targetX, y: targetY, icon: '💥', startTime: performance.now(), duration: 500 });
-
 
             const damageDealt = Math.max(1, attacker.attack - defender.defense);
             defender.health -= damageDealt;
@@ -1965,7 +2170,9 @@
             const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
             const unitsStillActive = playerUnits.filter(unit => (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
 
-            if (unitsStillActive.length > 0) {
+            if (dontAskAgainForEndTurn || unitsStillActive.length === 0) {
+                proceedEndTurn();
+            } else {
                 closeAllModals();
                 unitsWithMovesList.innerHTML = '';
                 unitsStillActive.forEach(unit => {
@@ -1979,9 +2186,8 @@
                     listItem.textContent = `- ${unit.unitType} at (${unit.x}, ${unit.y}): ${status}`;
                     unitsWithMovesList.appendChild(listItem);
                 });
+                dontAskAgainCheckbox.checked = dontAskAgainForEndTurn; 
                 confirmEndTurnModal.style.display = 'flex';
-            } else {
-                proceedEndTurn();
             }
         }
 
@@ -2004,12 +2210,15 @@
             deselectUnit();
             turnActions = [];
             enemyTurn();
-            hasGameStartedPlaying = true; // Set flag after the first turn is completed
+            hasGameStartedPlaying = true; 
             updateAllUI();
             closeAllModals();
 
             if (checkWinCondition()) {
                 showWinModal();
+                nextLevelButton.style.display = 'inline-block'; 
+            } else {
+                nextLevelButton.style.display = 'none'; 
             }
         }
 
@@ -2104,89 +2313,6 @@
             updateAllUI();
         }
 
-        async function getStrategicAdvice() {
-            // This function is no longer called from the UI, but kept for reference if needed elsewhere.
-            showMessage("Getting strategic advice...", 5000);
-            const gameState = {
-                turn: turnCount,
-                resources: resources,
-                techTree: techTree,
-                units: units.map(u => ({
-                    unitType: u.unitType,
-                    x: u.x,
-                    y: u.y,
-                    movesRemaining: u.movesRemaining,
-                    health: u.health,
-                    maxHealth: u.maxHealth,
-                    attack: u.attack,
-                    defense: u.defense,
-                    range: u.range,
-                    starsCarried: u.starsCarried,
-                    hasAttackedThisTurn: u.hasAttackedThisTurn,
-                    justTrained: u.justTrained,
-                    canAttack: canUnitAttack(u)
-                })),
-                cities: cities.map(c => ({
-                    x: c.x,
-                    y: c.y,
-                    population: c.population,
-                    isHomeBase: c.isHomeBase,
-                    hasUnit: map[c.y][c.x].unit !== null 
-                })),
-                mapInfo: map.flat().filter(tile => tile.maxVisibilityAchieved > 0).map(tile => ({
-                    type: tile.type,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource
-                })),
-                winCondition: currentWinCondition,
-                winConditionTarget: winConditionTarget
-            };
-
-            const prompt = `
-                You are a strategic AI for a turn-based strategy game called Emojitopia.
-                The player controls units and cities, collects stars, and unlocks technologies.
-                The goal is to achieve a specific win condition.
-
-                Here is the current game state:
-                ${JSON.stringify(gameState, null, 2)}
-
-                Based on this game state, provide concise strategic advice for the player's next moves.
-                Consider the following:
-                - Current resources (stars).
-                - Available technologies and which ones might be beneficial to unlock.
-                - Unit positioning, movement, and potential attacks.
-                - City management (training units, capturing villages).
-                - The current win condition.
-                - Fog of War (unexplored areas).
-
-                Suggest 1-3 actionable steps. Focus on immediate tactical and short-term strategic advice.
-                Keep the response brief and to the point.
-            `;
-
-            try {
-                const apiKey = ""; 
-                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] })
-                });
-
-                const result = await response.json();
-                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
-                    const advice = result.candidates[0].content.parts[0].text;
-                    showMessage(`Strategic Advice: ${advice}`, 8000);
-                } else {
-                    showMessage("Failed to get strategic advice. Please try again.", 3000);
-                }
-            } catch (error) {
-                console.error("Error fetching strategic advice:", error);
-                showMessage("Error getting strategic advice. Check console for details.", 3000);
-            }
-        }
-
-
         canvas.addEventListener('mousedown', handleInteractionStart);
         canvas.addEventListener('mousemove', handleInteractionMove); 
         canvas.addEventListener('mouseup', handleInteractionEnd);
@@ -2216,6 +2342,11 @@
             closeAllModals();
         });
 
+        dontAskAgainCheckbox.addEventListener('change', () => {
+            dontAskAgainForEndTurn = dontAskAgainCheckbox.checked;
+            localStorage.setItem('dontAskAgainEndTurn', dontAskAgainForEndTurn);
+        });
+
         hamburgerMenuIcon.addEventListener('click', () => {
             closeAllModals();
             optionsModal.style.display = 'flex';
@@ -2225,13 +2356,15 @@
             closeAllModals();
         });
 
-        giveUpButton.addEventListener('click', () => { // Renamed event listener
+        giveUpButton.addEventListener('click', () => { 
             closeAllModals();
-            initGameDefaults(); // Restart the level
+            initGameDefaults(); 
             showMessage("You gave up! Starting a new level.");
         });
         saveLevelButton.addEventListener('click', saveGameState); 
         loadLevelButton.addEventListener('click', importGameState); 
+        saveInitialMapButton.addEventListener('click', saveInitialMap); 
+        loadInitialMapButton.addEventListener('click', () => loadInitialMap());
 
         techTreeFromCityButton.addEventListener('click', () => {
             closeAllModals();
@@ -2239,9 +2372,18 @@
             updateAllUI();
         });
 
-        winModalCloseButton.addEventListener('click', () => {
+        winModalNewGameButton.addEventListener('click', () => { 
             closeAllModals();
-            initGame();
+            initGame(); 
+        });
+
+        winModalKeepPlayingButton.addEventListener('click', () => { 
+            closeAllModals();
+            nextLevelButton.style.display = 'inline-block'; 
+        });
+
+        nextLevelButton.addEventListener('click', () => { 
+            initGameDefaults(); 
         });
 
         window.addEventListener('click', (event) => {
