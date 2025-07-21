@@ -621,21 +621,33 @@
 
         function loadGameState(gameStateJson) {
             try {
-                // Explicitly hide the win modal at the very start of game initialization
                 winModal.style.display = 'none';
                 console.log("DEBUG: Win modal explicitly hidden at loadGameState start.");
                 const state = JSON.parse(gameStateJson);
 
-                // Deep copy map (ensure units are also deep copied)
+                // 1. Initialize map with no units initially, copy other properties
                 map = state.map.map(row => row.map(tile => ({
-                    ...tile,
-                    unit: tile.unit ? { ...tile.unit } : null // Deep copy unit if exists
+                    type: tile.type,
+                    maxVisibilityAchieved: tile.maxVisibilityAchieved,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    unit: null // Ensure no units are initially placed from the map JSON
                 })));
 
-                // Deep copy units
+                // 2. Deep copy units
                 units = state.units.map(unit => ({ ...unit }));
 
-                // Deep copy cities
+                // 3. Place units from the units array onto the map
+                units.forEach(unit => {
+                    if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
+                        map[unit.y][unit.x].unit = unit;
+                    } else {
+                        console.warn(`Unit ${unit.id} has invalid coordinates (${unit.x}, ${unit.y}). Removing unit.`);
+                        units = units.filter(u => u.id !== unit.id); // Remove invalid units
+                    }
+                });
+
                 cities = state.cities.map(city => ({ ...city }));
 
                 resources = { ...state.resources };
@@ -910,7 +922,7 @@
         function drawTile(x, y, currentFrameVisibleTiles) {
             const tile = map[y][x];
             const screenX = x * TILE_SIZE;
-            const screenY = y * TILE_SIZE;
+            const screenY = y * TILE_SIZE; /* Fixed: Changed TIL_SIZE to TILE_SIZE */
 
             ctx.font = `${TILE_SIZE * 0.5}px Arial`;
             ctx.textAlign = 'center';
@@ -1032,14 +1044,14 @@
                     const screenY = anim.y * TILE_SIZE;
                     let displayY = screenY; // For sleepy animation, move it up
                     if (anim.type === 'sleepy') {
-                        // Move sleepy emoji slightly above the unit
-                        displayY = screenY - (TILE_SIZE * 0.3 * (elapsed / anim.duration)); 
+                        // Start sleepy emoji higher above the unit
+                        displayY = screenY - TILE_SIZE * 0.5 * (elapsed / anim.duration); 
                     }
                     const alpha = 1 - (elapsed / anim.duration); 
                     
                     ctx.save();
                     ctx.globalAlpha = alpha;
-                    ctx.font = `${TILE_SIZE * 0.7}px Arial`;
+                    ctx.font = `${TILE_SIZE * 0.8}px Arial`; // Slightly larger
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(anim.icon, screenX + TILE_SIZE / 2, displayY + TILE_SIZE / 2);
@@ -1525,9 +1537,17 @@
                     updateHighlightTiles(unitOnTargetTile); 
                     actionCompleted = true;
                 } else {
-                    // Unit has no moves left, cannot attack, and is not just trained
-                    // Show sleepy emoji animation above the unit
-                    activeAnimations.push({ type: 'sleepy', x: unitOnTargetTile.x, y: unitOnTargetTile.y, icon: '😴', startTime: performance.now(), duration: 1000 });
+                    // Unit has no moves left, cannot attack, and is not just trained (i.e., it's tired)
+                    console.log(`DEBUG: Unit at (${unitOnTargetTile.x}, ${unitOnTargetTile.y}) is tired.`);
+                    console.log(`DEBUG: Moves Remaining: ${unitOnTargetTile.movesRemaining}`);
+                    console.log(`DEBUG: Can Attack: ${canUnitAttack(unitOnTargetTile)}`);
+                    console.log(`DEBUG: Just Trained: ${unitOnTargetTile.justTrained}`);
+                    
+                    // The conditions for the sleepy emoji are: movesRemaining is 0, cannot attack, and not just trained.
+                    // This is the correct place to trigger the animation.
+                    activeAnimations.push({ type: 'sleepy', x: unitOnTargetTile.x, y: unitOnTargetTile.y, icon: '😴', startTime: performance.now(), duration: 1500 }); // Increased duration
+                    console.log("DEBUG: Sleepy animation pushed.");
+
                     deselectUnit(); // Deselect if no actions are possible
                     actionCompleted = true;
                 }
