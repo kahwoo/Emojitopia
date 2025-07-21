@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emojitopia</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #eee;
+        }
+        canvas {
+            background-color: #333;
+            border: 2px solid #555;
+            display: block;
+            touch-action: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            max-width: 95vw;
+            max-height: 80vh;
+            margin-bottom: 15px;
+        }
+        #hud {
+            background-color: #444;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            width: calc(100% - 40px);
+            gap: 10px;
+        }
+        #hud-top-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        #hud-bottom-row {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        #hud div {
+            padding: 5px 10px;
+            border-radius: 5px;
+            background-color: #555;
+            color: #fff;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #selectedUnitInfo {
+            min-width: 200px;
+            text-align: center;
+            justify-content: center;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        .game-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: bold;
+            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px #388E3C;
+            outline: none;
+            white-space: nowrap;
+        }
+        .game-button:hover {
+            background-color: #45a049;
+        }
+        .game-button:active {
+            background-color: #3e8e41;
+            transform: translateY(2px);
+            box-shadow: 0 2px #388E3C;
+        }
+        .game-button:disabled {
+            background-color: #777;
+            box-shadow: 0 4px #555;
+            cursor: not-allowed;
+        }
+        .resource-icon {
+            font-size: 1.2em;
+            line-height: 1;
+        }
+
+        @keyframes pulse-outline {
+            0% { box-shadow: 0 4px #388E3C, 0 0 0 0px rgba(76, 175, 80, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+            100% { box-shadow: 0 4px #388E3C, 0 0 0 0px rgba(76, 175, 80, 0.7); }
+        }
+        .end-turn-highlight {
+            animation: pulse-outline 1.5s infinite;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #555;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            color: #fff;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            color: #fff;
+        }
+        .modal-content .item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #666;
+        }
+        .modal-content .item:last-child {
+            border-bottom: none;
+        }
+        .modal-content .item span {
+            font-size: 1.1em;
+        }
+        .modal-content .item button {
+            background-color: #2196F3;
+            box-shadow: 0 4px #1976D2;
+        }
+        .modal-content .item button:hover {
+            background-color: #1e88e5;
+        }
+        .modal-content .item button:active {
+            background-color: #1565C0;
+            transform: translateY(2px);
+            box-shadow: 0 2px #1976D2;
+        }
+        .modal-content .item button:disabled {
+            background-color: #777;
+            box-shadow: 0 4px #555;
+            cursor: not-allowed;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #hamburger-menu-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 2em;
+            cursor: pointer;
+            color: #fff;
+            z-index: 10;
+            background-color: #444;
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        #optionsModal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #optionsModal .modal-content {
+            background-color: #555;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            color: #fff;
+            max-width: 300px;
+        }
+        #optionsModal .modal-content .item button {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        #messageBox {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+
+        #winModal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #winModal .modal-content {
+            background-color: #4CAF50;
+            border: 2px solid #388E3C;
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 30px;
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #unitsWithMovesList {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #666;
+            text-align: left;
+            font-size: 0.9em;
+        }
+        #unitsWithMovesList p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+        <div id="hud-top-row">
+            <div id="turnInfo">Turn: 1</div>
+            <div id="resourceInfo">Stars: ★ 0</div>
+            <div id="objectiveInfo">Objective: </div>
+            <div class="button-group">
+                <button id="undoButton" class="game-button">Undo</button>
+                <button id="techTreeButton" class="game-button">Tech Tree</button>
+                <button id="endTurnButton" class="game-button">End Turn</button>
+            </div>
+        </div>
+        <div id="hud-bottom-row">
+            <div id="selectedUnitInfo">Selected: None</div>
+        </div>
+    </div>
+
+    <div id="hamburger-menu-icon">☰</div>
+
+    <div id="optionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button options-close">&times;</span>
+            <h2>Options</h2>
+            <div class="item">
+                <button id="exportGameStateButton" class="game-button">Export Gamestate</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="techTreeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button tech-tree-close">&times;</span>
+            <h2>Tech Tree</h2>
+            <div id="upgradesList">
+                <div class="item">
+                    <span>Mountain Climbing (Cost: <span id="mountainClimbingCost">1</span> Star)</span>
+                    <button id="buyMountainClimbing" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Swimming (Cost: <span id="swimmingCost">1</span> Star)</span>
+                    <button id="buySwimming" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Horse Riding (Cost: <span id="horseRidingCost">3</span> Stars)</span>
+                    <button id="buyHorseRiding" class="game-button">Buy</button>
+                </div>
+                <!-- New Tech for Archers -->
+                <div class="item">
+                    <span>Archery (Cost: <span id="archerTechCost">2</span> Stars)</span>
+                    <button id="buyArcherTech" class="game-button">Buy</button>
+                </div>
+                <!-- New Tech for Defenders -->
+                <div class="item">
+                    <span>Fortification (Cost: <span id="defenderTechCost">2</span> Stars)</span>
+                    <button id="buyDefenderTech" class="game-button">Buy</button>
+                </div>
+                <!-- Carrying Capacity Lvl 2 -->
+                <div class="item" id="carryingCapacity2Item">
+                    <span>Carrying Capacity Lvl 2 (Cost: <span id="carryingCapacity2Cost">1</span> Star)</span>
+                    <button id="buyCarryingCapacity2" class="game-button">Buy</button>
+                </div>
+                <!-- Carrying Capacity Lvl 3 -->
+                <div class="item" id="carryingCapacity3Item" style="display: none;">
+                    <span>Carrying Capacity Lvl 3 (Cost: <span id="carryingCapacity3Cost">2</span> Stars)</span>
+                    <button id="buyCarryingCapacity3" class="game-button">Buy</button>
+                </div>
+                <!-- Carrying Capacity Lvl 4 -->
+                <div class="item" id="carryingCapacity4Item" style="display: none;">
+                    <span>Carrying Capacity Lvl 4 (Cost: <span id="carryingCapacity4Cost">3</span> Stars)</span>
+                    <button id="buyCarryingCapacity4" class="game-button">Buy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cityMenuModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button city-menu-close">&times;</span>
+            <h2>City Actions</h2>
+            <div id="cityActionsList">
+                <div class="item">
+                    <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
+                    <button id="trainExplorerButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Train Horse Rider (Cost: <span id="horseRiderCost">2</span> Stars)</span>
+                    <button id="trainHorseRiderButton" class="game-button">Train</button>
+                </div>
+                <!-- New unit training options -->
+                <div class="item">
+                    <span>Train Archer (Cost: <span id="archerCost">3</span> Stars)</span>
+                    <button id="trainArcherButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
+                    <button id="trainDefenderButton" class="game-button">Train</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cityInteractionModal" class="modal">
+        <div class="modal-content">
+            <h2>What would you like to do?</h2>
+            <div class="button-group" style="justify-content: center;">
+                <button id="selectUnitFromCity" class="game-button">Select Unit</button>
+                <button id="openCityMenuFromInteraction" class="game-button">Open City Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmEndTurnModal" class="modal">
+        <div class="modal-content">
+            <h2>End Turn?</h2>
+            <p>Some units still have actions remaining. Are you sure you want to end your turn?</p>
+            <div id="unitsWithMovesList"></div> <!-- List of units with remaining moves -->
+            <div class="button-group" style="justify-content: center; margin-top: 20px;">
+                <button id="confirmEndTurnYes" class="game-button">Yes</button>
+                <button id="confirmEndTurnNo" class="game-button">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageBox"></div>
+
+    <div id="winModal" class="modal">
+        <div class="modal-content">
+            <p>YOU WIN!</p>
+            <button id="winModalCloseButton" class="game-button">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // Check if the page is being loaded from a cached version and log it
+        if (performance.navigation.type === 1) {
+            console.log("DEBUG: Page loaded via browser refresh (possibly from cache).");
+        } else if (performance.navigation.type === 2) {
+            console.log("DEBUG: Page loaded from browser back/forward cache.");
+        } else {
+            console.log("DEBUG: Page loaded normally (not from cache or history).");
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const hudTurnInfo = document.getElementById('turnInfo');
+        const hudResourceInfo = document.getElementById('resourceInfo');
+        const hudSelectedUnitInfo = document.getElementById('selectedUnitInfo');
+        const hudObjectiveInfo = document.getElementById('objectiveInfo');
+        const endTurnButton = document.getElementById('endTurnButton');
+        const techTreeButton = document.getElementById('techTreeButton');
+        const undoButton = document.getElementById('undoButton');
+        const techTreeModal = document.getElementById('techTreeModal');
+        const cityMenuModal = document.getElementById('cityMenuModal');
+        const cityInteractionModal = document.getElementById('cityInteractionModal');
+        const confirmEndTurnModal = document.getElementById('confirmEndTurnModal');
+        const closeTechTreeButton = document.querySelector('.tech-tree-close');
+        const closeCityMenuButton = document.querySelector('.city-menu-close'); 
+        const confirmEndTurnYesButton = document.getElementById('confirmEndTurnYes');
+        const confirmEndTurnNoButton = document.getElementById('confirmEndTurnNo');
+        const buyMountainClimbingButton = document.getElementById('buyMountainClimbing');
+        const buySwimmingButton = document.getElementById('buySwimming');
+        const buyHorseRidingButton = document.getElementById('buyHorseRiding');
+        const buyCarryingCapacity2Button = document.getElementById('buyCarryingCapacity2');
+        const buyCarryingCapacity3Button = document.getElementById('buyCarryingCapacity3');
+        const buyCarryingCapacity4Button = document.getElementById('buyCarryingCapacity4');
+        const trainExplorerButton = document.getElementById('trainExplorerButton');
+        const trainHorseRiderButton = document.getElementById('trainHorseRiderButton');
+        const trainArcherButton = document.getElementById('trainArcherButton');
+        const trainDefenderButton = document.getElementById('trainDefenderButton');
+        const selectUnitFromCityButton = document.getElementById('selectUnitFromCity');
+        const openCityMenuFromInteractionButton = document.getElementById('openCityMenuFromInteraction');
+        const hudElement = document.getElementById('hud');
+        const hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
+        const optionsModal = document.getElementById('optionsModal');
+        const closeOptionsButton = document.querySelector('.options-close');
+        const exportGameStateButton = document.getElementById('exportGameStateButton');
+        const messageBox = document.getElementById('messageBox');
+        const winModal = document.getElementById('winModal');
+        const winModalCloseButton = document.getElementById('winModalCloseButton');
+        const unitsWithMovesList = document.getElementById('unitsWithMovesList');
+
+
+        const carryingCapacity2Item = document.getElementById('carryingCapacity2Item');
+        const carryingCapacity3Item = document.getElementById('carryingCapacity3Item');
+        const carryingCapacity4Item = document.getElementById('carryingCapacity4Item');
+
+        const mountainClimbingCostSpan = document.getElementById('mountainClimbingCost');
+        const swimmingCostSpan = document.getElementById('swimmingCost');
+        const horseRidingCostSpan = document.getElementById('horseRidingCost');
+        const carryingCapacity2CostSpan = document.getElementById('carryingCapacity2Cost');
+        const carryingCapacity3CostSpan = document.getElementById('carryingCapacity3Cost');
+        const carryingCapacity4CostSpan = document.getElementById('carryingCapacity4Cost');
+        const explorerCostSpan = document.getElementById('explorerCost');
+        const horseRiderCostSpan = document.getElementById('horseRiderCost');
+        const archerCostSpan = document.getElementById('archerCost');
+        const defenderCostSpan = document.getElementById('defenderCost');
+        const archerTechCostSpan = document.getElementById('archerTechCost');
+        const defenderTechCostSpan = document.getElementById('defenderTechCost');
+
+        const buyArcherTechButton = document.getElementById('buyArcherTech');
+        const buyDefenderTechButton = document.getElementById('buyDefenderTech');
+
+
+        const TILE_SIZE = 64;
+        const MAP_SIZE = 10;
+        const DRAG_THRESHOLD = 5; 
+        const UNIT_VISION_RANGE = 1; 
+
+        let map = [];
+        let units = [];
+        let cities = [];
+        let turnCount = 1;
+        let resources = { stars: 0 };
+        let selectedUnit = null;
+        let highlightTiles = [];
+        let activeAnimations = []; 
+
+        let interactionStartCoords = { x: 0, y: 0 };
+        let interactionStartTile = null;
+        let isDragging = false;
+        let currentPointerCoords = { x: 0, y: 0 };
+
+        let turnActions = [];
+        let selectedCity = null;
+
+        let currentWinCondition = null;
+        let winConditionTarget = 0;
+
+        let nextUnitId = 1; // Global counter for unit IDs
+
+        const TERRAIN_COLORS = {
+            plains: '#7cb342',
+            forest: '#33691e',
+            mountain: '#616161',
+            water: '#2196f3',
+            river: '#42a5f5'
+        };
+
+        
