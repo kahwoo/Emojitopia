@@ -307,6 +307,9 @@
             <div class="item">
                 <button id="exportGameStateButton" class="game-button">Export Gamestate</button>
             </div>
+            <div class="item">
+                <button id="getStrategicAdviceButton" class="game-button">✨ Get Strategic Advice</button>
+            </div>
         </div>
     </div>
 
@@ -371,6 +374,10 @@
                 <div class="item">
                     <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
                     <button id="trainDefenderButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Tech Tree</span>
+                    <button id="techTreeFromCityButton" class="game-button">Open</button>
                 </div>
             </div>
         </div>
@@ -442,6 +449,8 @@
         const optionsModal = document.getElementById('optionsModal');
         const closeOptionsButton = document.querySelector('.options-close');
         const exportGameStateButton = document.getElementById('exportGameStateButton');
+        const getStrategicAdviceButton = document.getElementById('getStrategicAdviceButton');
+        const techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
         const messageBox = document.getElementById('messageBox');
         const winModal = document.getElementById('winModal');
         const winModalCloseButton = document.getElementById('winModalCloseButton');
@@ -528,4 +537,1740 @@
             horseRiding: { cost: 3, name: 'Horse Riding' },
             archerTech: { cost: 2, name: 'Archery' },
             defenderTech: { cost: 2, name: 'Fortification' },
-            carryingCapacity2: { cost: 1, name: 'Carrying Capacity Lvl 2', level:
+            carryingCapacity2: { cost: 1, name: 'Carrying Capacity Lvl 2', level: 2 },
+            carryingCapacity3: { cost: 2, name: 'Carrying Capacity Lvl 3', level: 3 }, 
+            carryingCapacity4: { cost: 3, name: 'Carrying Capacity Lvl 4', level: 4 }  
+        };
+
+        const UNIT_DEFINITIONS = {
+            explorer: { cost: 1, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '🚶' },
+            horseRider: { cost: 3, moves: 2, health: 1, attack: 1, defense: 0, range: 1, icon: '🏇' },
+            archer: { cost: 2, moves: 1, health: 1, attack: 1, defense: 0, range: 2, icon: '🏹' },     
+            defender: { cost: 2, moves: 1, health: 2, attack: 1, defense: 1, range: 1, icon: '🛡️' },
+            enemy: { cost: 0, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '💀' }
+        };
+
+        const MOUNTAIN_EMOJIS = ['🗻', '⛰️', '🏔️'];
+
+        const WIN_CONDITIONS = [
+            { type: 'captureAllCities', text: 'Capture all enemy cities!' },
+            { type: 'reachStarTotal', text: 'Reach {target} stars!' },
+            { type: 'defeatAllEnemies', text: 'Defeat all enemy units!' }
+        ];
+
+        function initGame() {
+            canvas.width = MAP_SIZE * TILE_SIZE;
+            canvas.height = MAP_SIZE * TILE_SIZE;
+
+            winModal.style.display = 'none';
+
+            if (typeof __initial_game_state !== 'undefined' && __initial_game_state) {
+                loadGameState(__initial_game_state);
+            } else {
+                initGameDefaults();
+            }
+            requestAnimationFrame(gameLoop); 
+        }
+
+        function initGameDefaults() {
+            winModal.style.display = 'none';
+
+            resources.stars = 2;
+            techTree = {
+                mountainClimbing: false,
+                swimming: false,
+                horseRiding: false,
+                archerTech: false,
+                defenderTech: false,
+                carryingCapacityLevel: 1
+            };
+
+            map = [];
+            units = [];
+            cities = [];
+            turnCount = 1;
+            selectedUnit = null;
+            highlightTiles = [];
+            turnActions = [];
+            nextUnitId = 1;
+
+            generateMap();
+            placeInitialElements();
+            placeEnemy(3);
+            selectWinCondition();
+
+            updateVisibility();
+            updateHUD();
+            updateTechTreeButtons();
+            updateCityMenuButtons();
+            updateCostDisplays();
+        }
+
+        function loadGameState(gameStateJson) {
+            try {
+                winModal.style.display = 'none';
+                const state = JSON.parse(gameStateJson);
+
+                map = state.map.map(row => row.map(tile => ({
+                    type: tile.type,
+                    maxVisibilityAchieved: tile.maxVisibilityAchieved,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    mountainEmoji: tile.mountainEmoji || null,
+                    unit: null
+                })));
+
+                units = state.units.map(unit => ({ ...unit }));
+
+                units.forEach(unit => {
+                    if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
+                        map[unit.y][unit.x].unit = unit;
+                        unit.icon = unit.icon || UNIT_DEFINITIONS[unit.unitType].icon;
+                    } else {
+                        units = units.filter(u => u.id !== unit.id);
+                    }
+                });
+
+                cities = state.cities.map(city => ({ ...city }));
+
+                resources = { ...state.resources };
+                techTree = { ...state.techTree };
+                turnCount = state.turnCount;
+                selectedUnit = null;
+                highlightTiles = [];
+                turnActions = [];
+
+                if (state.units.length > 0) {
+                    nextUnitId = Math.max(...state.units.map(u => u.id)) + 1;
+                } else {
+                    nextUnitId = 1;
+                }
+
+                if (state.selectedUnitId !== null) {
+                    selectedUnit = units.find(u => u.id === state.selectedUnitId);
+                    if (selectedUnit) {
+                        selectedUnit.selected = true;
+                        updateHighlightTiles(selectedUnit);
+                    }
+                }
+
+                currentWinCondition = state.currentWinCondition;
+                winConditionTarget = state.winConditionTarget;
+
+                updateVisibility();
+                updateHUD();
+                updateTechTreeButtons();
+                updateCityMenuButtons();
+                updateCostDisplays();
+                drawGame();
+            } catch (e) {
+                showMessage("Failed to load game state. Starting a new game.");
+                initGameDefaults();
+            }
+        }
+
+        function selectWinCondition() {
+            const randomIndex = Math.floor(Math.random() * WIN_CONDITIONS.length);
+            currentWinCondition = WIN_CONDITIONS[randomIndex];
+
+            if (currentWinCondition.type === 'reachStarTotal') {
+                winConditionTarget = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text.replace('{target}', winConditionTarget)}`;
+            } else if (currentWinCondition.type === 'captureAllCities') {
+                winConditionTarget = map.flat().filter(tile => tile.village).length;
+                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text}`;
+            } else if (currentWinCondition.type === 'defeatAllEnemies') {
+                winConditionTarget = units.filter(unit => unit.unitType === 'enemy').length;
+                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text}`;
+            }
+        }
+
+        function checkWinCondition() {
+            switch (currentWinCondition.type) {
+                case 'captureAllCities':
+                    const remainingVillages = map.flat().filter(tile => tile.village).length;
+                    if (remainingVillages === 0) {
+                        return true;
+                    }
+                    break;
+                case 'reachStarTotal':
+                    if (resources.stars >= winConditionTarget) {
+                        return true;
+                    }
+                    break;
+                case 'defeatAllEnemies':
+                    const enemyUnits = units.filter(unit => unit.unitType === 'enemy');
+                    if (enemyUnits.length === 0) {
+                        return true;
+                    }
+                    break;
+            }
+            return false;
+        }
+
+        function showWinModal() {
+            winModal.style.display = 'flex';
+        }
+
+        function generateMap() {
+            for (let y = 0; y < MAP_SIZE; y++) {
+                map[y] = [];
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    map[y][x] = {
+                        type: getRandomTerrainType(),
+                        maxVisibilityAchieved: 0, 
+                        city: false,
+                        village: false,
+                        resource: null,
+                        mountainEmoji: null,
+                        unit: null,
+                    };
+                    if (map[y][x].type === 'mountain') {
+                        map[y][x].mountainEmoji = MOUNTAIN_EMOJIS[Math.floor(Math.random() * MOUNTAIN_EMOJIS.length)];
+                    }
+                }
+            }
+
+            for (let i = 0; i < 2; i++) {
+                let startX, startY;
+                do {
+                    startX = Math.floor(Math.random() * MAP_SIZE);
+                    startY = Math.floor(Math.random() * MAP_SIZE);
+                } while (map[startY][startX].type === 'mountain' || map[startY][startX].city || map[startY][startX].village || map[startY][startX].unit);
+                
+                generateRiverSegment(startX, startY, MIN_RIVER_LENGTH);
+            }
+
+            for (let i = 0; i < 5; i++) {
+                let rx, ry;
+                do {
+                    rx = Math.floor(Math.random() * MAP_SIZE);
+                    ry = Math.floor(Math.random() * MAP_SIZE);
+                } while (map[ry][rx].type === 'mountain' || map[ry][rx].type === 'water' || map[ry][rx].village);
+                map[ry][rx].village = true;
+            }
+
+            for (let i = 0; i < 25; i++) {
+                let rx, ry;
+                do {
+                    rx = Math.floor(Math.random() * MAP_SIZE);
+                    ry = Math.floor(Math.random() * MAP_SIZE);
+                } while (map[ry][rx].type === 'mountain' || map[ry][rx].type === 'water' || map[ry][rx].resource);
+                map[ry][rx].resource = true;
+            }
+        }
+
+        function generateRiverSegment(startX, startY, minLength) {
+            let currentX = startX;
+            let currentY = startY;
+            let length = 0;
+            let prevDx = 0;
+            let prevDy = 0;
+
+            while (length < minLength * 2) {
+                if (currentX < 0 || currentX >= MAP_SIZE || currentY < 0 || currentY >= MAP_SIZE) break;
+
+                if (map[currentY][currentX].type !== 'river' && !map[currentY][currentX].city && !map[currentY][currentX].village && !map[currentY][currentX].unit) {
+                    map[currentY][currentX].type = 'river';
+                    length++;
+                } else if (map[currentY][currentX].type === 'river') {
+                    length++;
+                } else {
+                    break;
+                }
+
+                let nextDx = prevDx;
+                let nextDy = prevDy;
+
+                if (length === 1 || (prevDx === 0 && prevDy === 0)) {
+                    const directions = [{dx: 0, dy: 1}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: -1, dy: 0}];
+                    const randDir = directions[Math.floor(Math.random() * directions.length)];
+                    nextDx = randDir.dx;
+                    nextDy = randDir.dy;
+                } else {
+                    const rand = Math.random();
+                    if (rand < 0.20) {
+                        [nextDx, nextDy] = [-prevDy, prevDx];
+                    } else if (rand < 0.40) {
+                        [nextDx, nextDy] = [prevDy, -prevDx];
+                    }
+                }
+
+                const newX = currentX + nextDx;
+                const newY = currentY + nextDy;
+
+                if (newX < 0 || newX >= MAP_SIZE || newY < 0 || newY >= MAP_SIZE || map[newY][newX].city || map[newY][newX].village) {
+                    const directions = [{dx: 0, dy: 1}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: -1, dy: 0}];
+                    let foundValid = false;
+                    for (let i = 0; i < directions.length; i++) {
+                        const randDir = directions[Math.floor(Math.random() * directions.length)];
+                        const testX = currentX + randDir.dx;
+                        const testY = currentY + randDir.dy;
+                        if (testX >= 0 && testX < MAP_SIZE && testY >= 0 && testY < MAP_SIZE && !map[testY][testX].city && !map[testY][testX].village) {
+                            nextDx = randDir.dx;
+                            nextDy = randDir.dy;
+                            foundValid = true;
+                            break;
+                        }
+                    }
+                    if (!foundValid) break;
+                }
+                
+                currentX += nextDx;
+                currentY += nextDy;
+                prevDx = nextDx;
+                prevDy = nextDy;
+            }
+        }
+
+        function getRandomTerrainType() {
+            const rand = Math.random();
+            if (rand < 0.15) return 'forest';
+            if (rand < 0.25) return 'mountain';
+            if (rand < 0.35) return 'water';
+            if (rand < 0.45) return 'river';
+            return 'plains';
+        }
+
+        function placeInitialElements() {
+            let startX, startY;
+            do {
+                startX = Math.floor(Math.random() * MAP_SIZE);
+                startY = Math.floor(Math.random() * MAP_SIZE);
+            } while (map[startY][startX].type !== 'plains');
+
+            map[startY][startX].resource = false; 
+            map[startY][startX].city = true;
+            cities.push({ x: startX, y: startY, population: 1, isHomeBase: true });
+
+            const explorer = { 
+                id: nextUnitId++,
+                unitType: 'explorer', 
+                x: startX, 
+                y: startY, 
+                movesRemaining: UNIT_DEFINITIONS.explorer.moves, 
+                selected: false, 
+                starsCarried: 0, 
+                health: UNIT_DEFINITIONS.explorer.health, 
+                maxHealth: UNIT_DEFINITIONS.explorer.health,
+                attack: UNIT_DEFINITIONS.explorer.attack, 
+                defense: UNIT_DEFINITIONS.explorer.defense,
+                range: UNIT_DEFINITIONS.explorer.range,
+                hasAttackedThisTurn: false, 
+                justTrained: false,
+                kills: 0,
+                icon: UNIT_DEFINITIONS.explorer.icon
+            };
+            units.push(explorer);
+            map[startY][startX].unit = explorer;
+        }
+
+        function placeEnemy(count) {
+            for (let i = 0; i < count; i++) {
+                let ex, ey;
+                do {
+                    ex = Math.floor(Math.random() * MAP_SIZE);
+                    ey = Math.floor(Math.random() * MAP_SIZE);
+                } while (map[ey][ex].type === 'mountain' || map[ey][ex].type === 'water' || map[ey][ex].type === 'river' || map[ey][ex].city || map[ey][ex].village || map[ey][ex].unit);
+                
+                const enemy = { 
+                    id: nextUnitId++,
+                    unitType: 'enemy', 
+                    x: ex, 
+                    y: ey, 
+                    movesRemaining: UNIT_DEFINITIONS.enemy.moves, 
+                    selected: false, 
+                    starsCarried: 0, 
+                    health: UNIT_DEFINITIONS.enemy.health, 
+                    maxHealth: UNIT_DEFINITIONS.enemy.health,
+                    attack: UNIT_DEFINITIONS.enemy.attack, 
+                    defense: UNIT_DEFINITIONS.enemy.defense,
+                    range: UNIT_DEFINITIONS.enemy.range,
+                    hasAttackedThisTurn: false,
+                    kills: 0,
+                    icon: UNIT_DEFINITIONS.enemy.icon
+                };
+                units.push(enemy);
+                map[ey][ex].unit = enemy;
+            }
+        }
+
+        function drawStaticElements(x, y, screenX, screenY, tile) {
+            const isHomeBaseTile = cities.some(city => city.x === x && city.y === y && city.isHomeBase);
+            ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            if (tile.city) {
+                ctx.fillStyle = '#fff';
+                if (isHomeBaseTile) {
+                    ctx.fillText('🏠', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1);
+                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
+                    ctx.fillText('👑', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1);
+                    ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                } else {
+                    ctx.fillText('🏠', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+                }
+            } else if (tile.village) {
+                ctx.fillStyle = '#fff';
+                ctx.fillText('🛖', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+            }
+            if (tile.resource && !tile.city) { 
+                ctx.fillStyle = '#FFD700';
+                ctx.fillText('★', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + (tile.village ? TILE_SIZE * 0.2 : 0));
+            }
+            if (tile.type === 'mountain' && tile.mountainEmoji) {
+                ctx.fillStyle = '#fff';
+                ctx.fillText(tile.mountainEmoji, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+            }
+        }
+
+        function drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear) {
+            if (tile.unit && !(isDragging && selectedUnit && selectedUnit.x === x && selectedUnit.y === y)) {
+                if (tile.unit.unitType === 'enemy' && !isCurrentlyClear && tile.maxVisibilityAchieved === 0) {
+                    return; 
+                }
+                
+                ctx.fillStyle = '#fff';
+                const unitIcon = tile.unit.icon; 
+                ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+                
+                if (tile.unit.unitType !== 'enemy' && !tile.unit.selected && canUnitAttack(tile.unit)) {
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                } else if (tile.unit.unitType !== 'enemy' && tile.unit.movesRemaining > 0 && !tile.unit.selected && !tile.unit.justTrained) {
+                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)'; 
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                }
+                if (tile.unit.selected) {
+                    ctx.strokeStyle = '#FFFF00';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                }
+                if (tile.unit.starsCarried > 0) {
+                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
+                    ctx.fillStyle = '#FFD700';
+                    ctx.fillText('★', screenX + TILE_SIZE * 0.75, screenY + TILE_SIZE * 0.25);
+                    ctx.font = `${TILE_SIZE * 0.25}px Arial`;
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.75, screenY + TILE_SIZE * 0.75);
+                    ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                }
+                ctx.font = `${TILE_SIZE * 0.25}px Arial`;
+                ctx.fillStyle = '#FF0000'; 
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.fillText(`HP: ${tile.unit.health}/${tile.unit.maxHealth}`, screenX + 3, screenY + 3);
+                ctx.textAlign = 'center'; 
+                ctx.textBaseline = 'middle';
+            }
+        }
+
+        function drawTile(x, y, currentFrameVisibleTiles) {
+            const tile = map[y][x];
+            const screenX = x * TILE_SIZE;
+            const screenY = y * TILE_SIZE;
+
+            ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const isCurrentlyClear = currentFrameVisibleTiles.has(`${x},${y}`);
+
+            if (isCurrentlyClear) {
+                ctx.fillStyle = TERRAIN_COLORS[tile.type];
+                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+
+                drawStaticElements(x, y, screenX, screenY, tile);
+                drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear);
+            } 
+            else if (tile.maxVisibilityAchieved >= 1) { 
+                ctx.fillStyle = TERRAIN_COLORS[tile.type];
+                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+
+                drawStaticElements(x, y, screenX, screenY, tile);
+                
+                if (tile.unit && tile.unit.unitType === 'enemy') {
+                    drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear); 
+                }
+                else if (tile.unit && tile.unit.unitType !== 'enemy') {
+                    drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear);
+                }
+
+
+                if (tile.maxVisibilityAchieved === 1) { 
+                    ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+                    ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
+                    for (let i = 0; i < TILE_SIZE; i += 8) {
+                        for (let j = 0; j < TILE_SIZE; j += 8) {
+                            if ((i + j) % 16 === 0) {
+                                ctx.fillRect(screenX + i, screenY + j, 1, 1);
+                            }
+                        }
+                    }
+                }
+            }
+            else { 
+                ctx.fillStyle = 'rgba(50, 50, 50, 0.9)';
+                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; 
+                for (let i = 0; i < TILE_SIZE; i += 4) {
+                    for (let j = 0; j < TILE_SIZE; j += 4) {
+                        if ((i + j) % 8 === 0) {
+                            ctx.fillRect(screenX + i, screenY + j, 1, 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        function gameLoop() {
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const currentFrameVisibleTiles = new Set();
+            units.forEach(unit => {
+                if (unit.unitType !== 'enemy') {
+                    for (let dy = -UNIT_VISION_RANGE; dy <= UNIT_VISION_RANGE; dy++) {
+                        for (let dx = -UNIT_VISION_RANGE; dx <= UNIT_VISION_RANGE; dx++) {
+                            const nx = unit.x + dx;
+                            const ny = unit.y + dy;
+                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                                currentFrameVisibleTiles.add(`${nx},${ny}`);
+                            }
+                        }
+                    }
+                }
+            });
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    drawTile(x, y, currentFrameVisibleTiles);
+                }
+            }
+            highlightTiles.forEach(p => {
+                const screenX = p.x * TILE_SIZE;
+                const screenY = p.y * TILE_SIZE;
+                if (p.type === 'move') {
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                    ctx.strokeStyle = '#00FF00';
+                } else if (p.type === 'attack') {
+                    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; 
+                    ctx.strokeStyle = '#FF0000';
+                }
+                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                ctx.lineWidth = 2;
+                ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+            });
+
+            if (isDragging && selectedUnit) {
+                const drawX = currentPointerCoords.x - TILE_SIZE / 2;
+                const drawY = currentPointerCoords.y - TILE_SIZE / 2;
+
+                ctx.save();
+                ctx.globalAlpha = 0.7;
+                ctx.fillStyle = '#fff';
+                const unitIcon = selectedUnit.icon; 
+                ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(unitIcon, drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 2);
+                ctx.restore();
+            }
+
+            const now = performance.now();
+            activeAnimations = activeAnimations.filter(anim => {
+                const elapsed = now - anim.startTime;
+                if (elapsed < anim.duration) {
+                    const screenX = anim.x * TILE_SIZE;
+                    const screenY = anim.y * TILE_SIZE;
+                    let displayY = screenY;
+
+                    ctx.save(); 
+
+                    if (anim.type === 'sleepy') {
+                        displayY = screenY - TILE_SIZE * 0.75 * (elapsed / anim.duration); 
+                        
+                        const fadeStartRatio = 0.7; 
+                        let alpha = 1;
+                        if (elapsed / anim.duration > fadeStartRatio) {
+                            alpha = 1 - ((elapsed / anim.duration - fadeStartRatio) / (1 - fadeStartRatio));
+                        }
+                        ctx.globalAlpha = alpha;
+                        ctx.fillStyle = '#FFFFFF'; 
+                        ctx.font = `${TILE_SIZE * 0.8}px Arial, "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Apple Color Emoji", sans-serif`; 
+                    } else { 
+                        const alpha = 1 - (elapsed / anim.duration);
+                        ctx.globalAlpha = alpha; 
+                        ctx.fillStyle = '#fff'; 
+                        ctx.font = `${TILE_SIZE * 0.8}px Arial, "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Apple Color Emoji", sans-serif`;
+                    }
+
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(anim.icon, screenX + TILE_SIZE / 2, displayY + TILE_SIZE / 2);
+                    ctx.restore(); 
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        function updateHUD() {
+            hudTurnInfo.textContent = `Turn: ${turnCount}`;
+            hudResourceInfo.innerHTML = `Stars: <span class="resource-icon">★</span> ${resources.stars}`;
+            if (currentWinCondition) {
+                let objectiveText = currentWinCondition.text;
+                if (currentWinCondition.type === 'reachStarTotal') {
+                    objectiveText = objectiveText.replace('{target}', winConditionTarget);
+                }
+                hudObjectiveInfo.textContent = `Objective: ${objectiveText}`;
+            }
+
+            if (selectedUnit) {
+                let unitStatus = `${selectedUnit.unitType} (${selectedUnit.movesRemaining} moves)`;
+                if (selectedUnit.starsCarried > 0) {
+                    unitStatus += ` (Carrying ★ ${selectedUnit.starsCarried})`;
+                }
+                if (selectedUnit.unitType !== 'enemy') {
+                    unitStatus += ` | HP: ${selectedUnit.health}/${selectedUnit.maxHealth}`;
+                    if (selectedUnit.defense > 0) {
+                        unitStatus += ` | Def: ${selectedUnit.defense}`;
+                    }
+                    if (selectedUnit.kills > 0) {
+                        unitStatus += ` | Kills: ${selectedUnit.kills}`;
+                    }
+                    if (canUnitAttack(selectedUnit)) {
+                        unitStatus += ` (Can Attack)`;
+                    } else if (selectedUnit.hasAttackedThisTurn) {
+                        unitStatus += ` (Attacked)`;
+                    }
+                    if (selectedUnit.justTrained) {
+                        unitStatus = `Selected: New unit, cannot move this turn.`;
+                    }
+                }
+                hudSelectedUnitInfo.textContent = `Selected: ${unitStatus}`;
+            } else {
+                hudSelectedUnitInfo.textContent = 'Selected: None';
+            }
+
+            const anyUnitHasMoves = units.some(unit => unit.unitType !== 'enemy' && (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
+            if (anyUnitHasMoves) {
+                endTurnButton.classList.remove('end-turn-highlight');
+            } else {
+                endTurnButton.classList.add('end-turn-highlight');
+            }
+
+            undoButton.disabled = turnActions.length === 0;
+        }
+
+        function updateCostDisplays() {
+            mountainClimbingCostSpan.textContent = UPGRADES.mountainClimbing.cost;
+            swimmingCostSpan.textContent = UPGRADES.swimming.cost;
+            horseRidingCostSpan.textContent = UPGRADES.horseRiding.cost;
+            carryingCapacity2CostSpan.textContent = UPGRADES.carryingCapacity2.cost;
+            carryingCapacity3CostSpan.textContent = UPGRADES.carryingCapacity3.cost;
+            carryingCapacity4CostSpan.textContent = UPGRADES.carryingCapacity4.cost;
+            explorerCostSpan.textContent = UNIT_DEFINITIONS.explorer.cost;
+            horseRiderCostSpan.textContent = UNIT_DEFINITIONS.horseRider.cost;
+            archerCostSpan.textContent = UNIT_DEFINITIONS.archer.cost;
+            defenderCostSpan.textContent = UNIT_DEFINITIONS.defender.cost;
+            archerTechCostSpan.textContent = UPGRADES.archerTech.cost;
+            defenderTechCostSpan.textContent = UPGRADES.defenderTech.cost;
+        }
+
+        function updateTechTreeButtons() {
+            buyMountainClimbingButton.disabled = techTree.mountainClimbing || resources.stars < UPGRADES.mountainClimbing.cost;
+            if (techTree.mountainClimbing) buyMountainClimbingButton.textContent = 'Unlocked!';
+            else buyMountainClimbingButton.textContent = 'Buy';
+
+            buySwimmingButton.disabled = techTree.swimming || resources.stars < UPGRADES.swimming.cost;
+            if (techTree.swimming) buySwimmingButton.textContent = 'Unlocked!';
+            else buySwimmingButton.textContent = 'Buy';
+
+            buyHorseRidingButton.disabled = techTree.horseRiding || resources.stars < UPGRADES.horseRiding.cost;
+            if (techTree.horseRiding) buyHorseRidingButton.textContent = 'Unlocked!';
+            else buyHorseRidingButton.textContent = 'Buy';
+
+            buyArcherTechButton.disabled = techTree.archerTech || resources.stars < UPGRADES.archerTech.cost;
+            if (techTree.archerTech) buyArcherTechButton.textContent = 'Unlocked!';
+            else buyArcherTechButton.textContent = 'Buy';
+
+            buyDefenderTechButton.disabled = techTree.defenderTech || resources.stars < UPGRADES.defenderTech.cost;
+            if (techTree.defenderTech) buyDefenderTechButton.textContent = 'Unlocked!';
+            else buyDefenderTechButton.textContent = 'Buy';
+
+            carryingCapacity2Item.style.display = 'flex';
+            carryingCapacity3Item.style.display = 'none';
+            carryingCapacity4Item.style.display = 'none';
+
+            if (techTree.carryingCapacityLevel < 2) {
+                buyCarryingCapacity2Button.disabled = resources.stars < UPGRADES.carryingCapacity2.cost;
+                buyCarryingCapacity2Button.textContent = 'Buy';
+            } else if (techTree.carryingCapacityLevel === 2) {
+                buyCarryingCapacity2Button.textContent = 'Unlocked!';
+                buyCarryingCapacity2Button.disabled = true;
+                carryingCapacity3Item.style.display = 'flex';
+                buyCarryingCapacity3Button.disabled = resources.stars < UPGRADES.carryingCapacity3.cost;
+                buyCarryingCapacity3Button.textContent = 'Next Level';
+            } else if (techTree.carryingCapacityLevel === 3) {
+                buyCarryingCapacity2Button.textContent = 'Unlocked!';
+                buyCarryingCapacity2Button.disabled = true;
+                buyCarryingCapacity3Button.textContent = 'Unlocked!';
+                buyCarryingCapacity3Button.disabled = true;
+                carryingCapacity3Item.style.display = 'flex';
+                carryingCapacity4Item.style.display = 'flex';
+                buyCarryingCapacity4Button.disabled = resources.stars < UPGRADES.carryingCapacity4.cost;
+                buyCarryingCapacity4Button.textContent = 'Next Level';
+            } else if (techTree.carryingCapacityLevel >= 4) {
+                buyCarryingCapacity2Button.textContent = 'Unlocked!';
+                buyCarryingCapacity2Button.disabled = true;
+                buyCarryingCapacity3Button.textContent = 'Unlocked!';
+                buyCarryingCapacity3Button.disabled = true;
+                buyCarryingCapacity4Button.textContent = 'Unlocked!';
+                buyCarryingCapacity4Button.disabled = true;
+                carryingCapacity3Item.style.display = 'flex';
+                carryingCapacity4Item.style.display = 'flex';
+            }
+        }
+
+        function updateCityMenuButtons() {
+            const cityTile = selectedCity ? map[selectedCity.y][selectedCity.x] : null;
+            const isCityOccupied = cityTile && cityTile.unit;
+
+            trainExplorerButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.explorer.cost;
+            trainHorseRiderButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.horseRider.cost || !techTree.horseRiding;
+            trainArcherButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.archer.cost || !techTree.archerTech;
+            trainDefenderButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.defender.cost || !techTree.defenderTech;
+
+            trainHorseRiderButton.parentElement.style.display = techTree.horseRiding ? 'flex' : 'none';
+            trainArcherButton.parentElement.style.display = techTree.archerTech ? 'flex' : 'none';
+            trainDefenderButton.parentElement.style.display = techTree.defenderTech ? 'flex' : 'none';
+        }
+
+        function getTileCoords(event) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (event.changedTouches && event.changedTouches.length > 0) {
+                clientX = event.changedTouches[0].clientX;
+                clientY = event.changedTouches[0].clientY;
+            } else if (event.touches && event.touches.length > 0) {
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+
+            const canvasX = (clientX - rect.left) * scaleX;
+            const canvasY = (clientY - rect.top) * scaleY;
+            const tileX = Math.floor(canvasX / TILE_SIZE);
+            const tileY = Math.floor(canvasY / TILE_SIZE);
+            return { tileX, tileY, canvasX, canvasY };
+        }
+
+        function getMovementCost(tileType, unitType) {
+            if (tileType === 'mountain' && !techTree.mountainClimbing) return Infinity;
+            if ((tileType === 'water' || tileType === 'river') && !techTree.swimming) return Infinity;
+            
+            if (tileType === 'forest') {
+                if (unitType === 'archer') {
+                    return TERRAIN_MOVE_COST[tileType];
+                } else {
+                    return Infinity;
+                }
+            }
+            
+            return TERRAIN_MOVE_COST[tileType];
+        }
+
+        function getValidMoveTiles(unit) {
+            if (unit.justTrained) return [];
+
+            const reachableTiles = new Map(); 
+            const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
+            const visited = new Set(); 
+
+            reachableTiles.set(`${unit.x},${unit.y}`, 0);
+            visited.add(`${unit.x},${unit.y}`);
+
+            let head = 0;
+            while(head < queue.length) {
+                const { x, y, cost } = queue[head++];
+
+                const neighbors = [
+                    {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
+                    {dx: -1, dy: 0},                   {dx: 1, dy: 0},
+                    {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
+                ];
+
+                for (const {dx, dy} of neighbors) {
+                    const nx = x + dx;
+                    const ny = y + dy;
+
+                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                        const neighborTile = map[ny][nx];
+                        const moveCost = getMovementCost(neighborTile.type, unit.unitType);
+
+                        if (moveCost === Infinity) continue;
+
+                        const newCost = cost + moveCost;
+
+                        if (newCost <= unit.movesRemaining) {
+                            const key = `${nx},${ny}`;
+                            if (neighborTile.unit && neighborTile.unit.id !== unit.id) {
+                                continue;
+                            }
+                            
+                            if (!visited.has(key) || newCost < reachableTiles.get(key)) {
+                                reachableTiles.set(key, newCost);
+                                visited.add(key);
+                                queue.push({ x: nx, y: ny, cost: newCost });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            const validMoves = [];
+            for (const [key, cost] of reachableTiles.entries()) {
+                const [x, y] = key.split(',').map(Number);
+                if (x === unit.x && y === unit.y) continue;
+                validMoves.push({ x, y, cost });
+            }
+            return validMoves;
+        }
+
+        function getValidAttackTiles(unit) {
+            const attackTiles = [];
+            if (unit.hasAttackedThisTurn || unit.unitType === 'enemy') {
+                return attackTiles;
+            }
+
+            const unitRange = UNIT_DEFINITIONS[unit.unitType].range;
+
+            for (let dy = -unitRange; dy <= unitRange; dy++) {
+                for (let dx = -unitRange; dx <= unitRange; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    if (Math.abs(dx) > unitRange || Math.abs(dy) > unitRange) continue;
+
+                    const nx = unit.x + dx;
+                    const ny = unit.y + dy;
+
+                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                        const targetTile = map[ny][nx];
+                        if (targetTile.unit && targetTile.unit.unitType === 'enemy') {
+                            attackTiles.push({ x: nx, y: ny });
+                        }
+                    }
+                }
+            }
+            return attackTiles;
+        }
+
+        function canUnitAttack(unit) {
+            return getValidAttackTiles(unit).length > 0;
+        }
+
+        function saveStateForUndo() {
+            const state = {
+                map: JSON.parse(JSON.stringify(map)),
+                units: JSON.parse(JSON.stringify(units)),
+                cities: JSON.parse(JSON.stringify(cities)),
+                resources: { ...resources },
+                selectedUnitId: selectedUnit ? selectedUnit.id : null,
+                highlightTiles: JSON.parse(JSON.stringify(highlightTiles)),
+                techTree: JSON.parse(JSON.stringify(techTree)),
+                turnCount: turnCount,
+                currentWinCondition: currentWinCondition,
+                winConditionTarget: winConditionTarget
+            };
+            turnActions.push(state);
+        }
+
+        function undoLastAction() {
+            if (turnActions.length > 0) {
+                const restoredState = turnActions.pop();
+                map = restoredState.map;
+                units = restoredState.units;
+                cities = restoredState.cities;
+                resources = restoredState.resources;
+                highlightTiles = restoredState.highlightTiles;
+                techTree = restoredState.techTree;
+                turnCount = restoredState.turnCount;
+                currentWinCondition = restoredState.currentWinCondition;
+                winConditionTarget = restoredState.winConditionTarget;
+
+                selectedUnit = null;
+                if (restoredState.selectedUnitId !== null) {
+                    selectedUnit = units.find(u => u.id === restoredState.selectedUnitId);
+                    if (selectedUnit) {
+                        selectedUnit.selected = true;
+                    }
+                }
+                updateHUD();
+                updateTechTreeButtons();
+                updateCityMenuButtons();
+                updateCostDisplays();
+            }
+        }
+
+        function closeAllModals() {
+            techTreeModal.style.display = 'none';
+            cityMenuModal.style.display = 'none';
+            cityInteractionModal.style.display = 'none';
+            confirmEndTurnModal.style.display = 'none';
+            optionsModal.style.display = 'none';
+            winModal.style.display = 'none';
+        }
+
+        function showMessage(message, duration = 2000) {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, duration);
+        }
+
+        function exportGameState() {
+            const gameState = {
+                map: map.map(row => row.map(tile => ({
+                    type: tile.type,
+                    maxVisibilityAchieved: tile.maxVisibilityAchieved,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource,
+                    mountainEmoji: tile.mountainEmoji,
+                    unit: tile.unit ? {
+                        id: tile.unit.id,
+                        unitType: tile.unit.unitType,
+                        x: tile.unit.x,
+                        y: tile.unit.y,
+                        movesRemaining: tile.unit.movesRemaining,
+                        starsCarried: tile.unit.starsCarried,
+                        health: tile.unit.health,
+                        maxHealth: tile.unit.maxHealth,
+                        attack: tile.unit.attack,
+                        defense: tile.unit.defense,
+                        range: tile.unit.range,
+                        hasAttackedThisTurn: tile.unit.hasAttackedThisTurn,
+                        justTrained: tile.unit.justTrained,
+                        kills: tile.unit.kills,
+                        icon: tile.unit.icon
+                    } : null
+                }))),
+                units: units.map(unit => ({
+                    id: unit.id,
+                    unitType: unit.unitType,
+                    x: unit.x,
+                    y: unit.y,
+                    movesRemaining: unit.movesRemaining,
+                    selected: unit.selected,
+                    starsCarried: unit.starsCarried,
+                    health: unit.health,
+                    maxHealth: unit.maxHealth,
+                    attack: unit.attack,
+                    defense: unit.defense,
+                    range: unit.range,
+                    hasAttackedThisTurn: unit.hasAttackedThisTurn,
+                    justTrained: unit.justTrained,
+                    kills: unit.kills,
+                    icon: unit.icon
+                })),
+                cities: cities,
+                turnCount: turnCount,
+                resources: { ...resources },
+                techTree: { ...techTree },
+                selectedUnitId: selectedUnit ? selectedUnit.id : null,
+                currentWinCondition: currentWinCondition,
+                winConditionTarget: winConditionTarget
+            };
+
+            const jsonString = JSON.stringify(gameState, null, 2);
+            console.log("--- GAME STATE EXPORT ---");
+            console.log(jsonString);
+            console.log("--- END GAME STATE EXPORT ---");
+
+            const textarea = document.createElement('textarea');
+            textarea.value = jsonString;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showMessage("Game state copied to clipboard!");
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                showMessage("Failed to copy game state.");
+            }
+            document.body.removeChild(textarea);
+        }
+
+
+        function handleInteractionStart(event) {
+            event.preventDefault();
+            const { tileX, tileY, canvasX, canvasY } = getTileCoords(event);
+            interactionStartCoords = { x: canvasX, y: canvasY };
+            interactionStartTile = { x: tileX, y: tileY }; 
+            isDragging = false; 
+            closeAllModals();
+            updateHUD(); 
+        }
+
+        function handleInteractionMove(event) {
+            event.preventDefault(); 
+            const { canvasX, canvasY } = getTileCoords(event);
+            currentPointerCoords = { x: canvasX, y: canvasY };
+
+            if (interactionStartCoords && interactionStartTile) { 
+                const dist = Math.sqrt(
+                    Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) +
+                    Math.pow(currentPointerCoords.y - interactionStartCoords.y, 2) 
+                );
+                if (dist > DRAG_THRESHOLD) {
+                    isDragging = true;
+                    if (!selectedUnit) {
+                        const unitOnStartTile = map[interactionStartTile.y]?.[interactionStartTile.x]?.unit;
+                        if (unitOnStartTile && unitOnStartTile.unitType !== 'enemy' && (unitOnStartTile.movesRemaining > 0 || canUnitAttack(unitOnStartTile)) && !unitOnStartTile.justTrained) {
+                            selectUnit(unitOnStartTile);
+                            updateHighlightTiles(selectedUnit);
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleInteractionEnd(event) {
+            event.preventDefault();
+
+            const { tileX, tileY } = getTileCoords(event);
+            let targetTileCoords = { x: tileX, y: tileY };
+
+            const tileAtTarget = map[targetTileCoords.y]?.[targetTileCoords.x];
+            if (!tileAtTarget) {
+                deselectUnit(); 
+                closeAllModals();
+                updateHUD();
+                resetInteractionState();
+                return;
+            }
+
+            const unitOnTargetTile = tileAtTarget.unit; 
+            const cityOnTargetTile = cities.find(c => c.x === targetTileCoords.x && c.y === targetTileCoords.y);
+
+            let actionCompleted = false;
+
+            if (selectedUnit) {
+                const clickedHighlight = highlightTiles.find(p => p.x === targetTileCoords.x && p.y === targetTileCoords.y);
+
+                if (clickedHighlight && clickedHighlight.type === 'attack') {
+                    if (unitOnTargetTile && unitOnTargetTile.unitType === 'enemy' && !selectedUnit.hasAttackedThisTurn) {
+                        saveStateForUndo();
+                        handleCombat(selectedUnit, unitOnTargetTile, targetTileCoords.x, targetTileCoords.y);
+                        actionCompleted = true;
+                    }
+                } else if (clickedHighlight && clickedHighlight.type === 'move') {
+                    if (!unitOnTargetTile) { 
+                        saveStateForUndo();
+                        moveUnit(selectedUnit, targetTileCoords.x, targetTileCoords.y);
+                        selectedUnit.movesRemaining -= clickedHighlight.cost; 
+                        actionCompleted = true;
+                    }
+                } else if (cityOnTargetTile) { 
+                    selectedCity = cityOnTargetTile;
+                    closeAllModals();
+                    cityMenuModal.style.display = 'flex';
+                    updateCityMenuButtons();
+                    actionCompleted = true;
+                    deselectUnit(); 
+                } else { 
+                    deselectUnit();
+                    actionCompleted = true;
+                }
+            } 
+            else if (unitOnTargetTile && unitOnTargetTile.unitType !== 'enemy') {
+                const unitIsTired = (unitOnTargetTile.movesRemaining === 0 && !canUnitAttack(unitOnTargetTile) && !unitOnTargetTile.justTrained);
+
+                if (!unitIsTired) {
+                    saveStateForUndo();
+                    selectUnit(unitOnTargetTile);
+                    updateHighlightTiles(unitOnTargetTile); 
+                    actionCompleted = true;
+                } else {
+                    activeAnimations.push({ type: 'sleepy', x: unitOnTargetTile.x, y: unitOnTargetTile.y, icon: '😴', startTime: performance.now(), duration: 2000 });
+                    deselectUnit();
+                    actionCompleted = true;
+                }
+            }
+            else if (cityOnTargetTile) {
+                selectedCity = cityOnTargetTile;
+                closeAllModals();
+                cityMenuModal.style.display = 'flex';
+                updateCityMenuButtons();
+                actionCompleted = true;
+            }
+            else {
+                const tileType = tileAtTarget.type;
+                if (tileType !== 'plains') {
+                    let message = `Tile: ${tileType}`;
+
+                    if (tileType === 'mountain' && !techTree.mountainClimbing) {
+                        message += ` (Requires Mountain Climbing tech)`;
+                    } else if ((tileType === 'water' || tileType === 'river') && !techTree.swimming) {
+                        message += ` (Requires Swimming tech)`;
+                    } else if (tileType === 'forest') {
+                        message += ` (Only Archers can move through forests)`;
+                    }
+                    showMessage(message);
+                }
+                deselectUnit();
+                actionCompleted = true;
+            }
+
+            if (selectedUnit) {
+                if (selectedUnit.movesRemaining > 0 || canUnitAttack(selectedUnit)) {
+                    updateHighlightTiles(selectedUnit);
+                } else {
+                    deselectUnit();
+                }
+            } else if (!actionCompleted) { 
+                deselectUnit();
+            }
+            
+            resetInteractionState();
+            updateHUD();
+        }
+
+        function handleCombat(attacker, defender, targetX, targetY) {
+            saveStateForUndo();
+
+            const attackerOriginalX = attacker.x;
+            const attackerOriginalY = attacker.y;
+
+            activeAnimations.push({ type: 'combat', x: targetX, y: targetY, icon: '💥', startTime: performance.now(), duration: 500 });
+
+
+            const damageDealt = Math.max(1, attacker.attack - defender.defense);
+            defender.health -= damageDealt;
+            attacker.hasAttackedThisTurn = true; 
+
+            attacker.movesRemaining = 0;
+
+            if (defender.health > 0) { 
+                const counterDamage = Math.max(1, defender.attack - attacker.defense);
+                attacker.health -= counterDamage;
+            }
+
+            if (defender.health <= 0) {
+                map[defender.y][defender.x].unit = null;
+                units = units.filter(u => u.id !== defender.id);
+                
+                if (attacker.unitType !== 'enemy') {
+                    attacker.kills++;
+                    if (attacker.kills >= 2) { 
+                        attacker.maxHealth++;
+                        attacker.health = attacker.maxHealth;
+                        attacker.kills = 0;
+                        showMessage(`${attacker.unitType} leveled up! Max HP: ${attacker.maxHealth}`);
+                    }
+                }
+
+                if (attacker.unitType !== 'archer') {
+                    const targetTileType = map[targetY][targetX].type;
+                    const moveCostToTarget = getMovementCost(targetTileType, attacker.unitType);
+
+                    if (moveCostToTarget !== Infinity) { 
+                        moveUnit(attacker, targetX, targetY); 
+                    } else {
+                        map[attackerOriginalY][attackerOriginalX].unit = attacker;
+                        attacker.x = attackerOriginalX;
+                        attacker.y = attackerOriginalY;
+                    }
+                } else {
+                    map[attackerOriginalY][attackerOriginalX].unit = attacker;
+                    attacker.x = attackerOriginalX;
+                    attacker.y = attackerOriginalY;
+                }
+
+                if (attacker.health <= 0) {
+                    map[attacker.y][attacker.x].unit = null;
+                    units = units.filter(u => u.id !== attacker.id);
+                    deselectUnit();
+                }
+            } else if (attacker.health <= 0) {
+                map[attacker.y][attacker.x].unit = null;
+                units = units.filter(u => u.id !== attacker.id);
+                deselectUnit();
+            }
+        }
+
+        function updateHighlightTiles(unit) {
+            highlightTiles = []; 
+
+            if (unit && !unit.justTrained && unit.movesRemaining > 0) {
+                const moveTiles = getValidMoveTiles(unit); 
+                moveTiles.forEach(p => highlightTiles.push({ x: p.x, y: p.y, type: 'move', cost: p.cost })); 
+            }
+
+            if (unit && !unit.hasAttackedThisTurn) {
+                const attackTiles = getValidAttackTiles(unit);
+                attackTiles.forEach(p => {
+                    const isAlreadyMoveHighlight = highlightTiles.some(h => h.x === p.x && h.y === p.y && h.type === 'move');
+                    if (!isAlreadyMoveHighlight) { 
+                        highlightTiles.push({ x: p.x, y: p.y, type: 'attack' });
+                    }
+                });
+            }
+        }
+
+        function selectUnit(unit) {
+            if (unit.justTrained) {
+                hudSelectedUnitInfo.textContent = 'Selected: New unit, cannot move this turn.';
+                return;
+            }
+            if (selectedUnit) {
+                selectedUnit.selected = false;
+            }
+            selectedUnit = unit;
+            selectedUnit.selected = true;
+        }
+
+        function deselectUnit() {
+            if (selectedUnit) {
+                selectedUnit.selected = false;
+                selectedUnit = null;
+                highlightTiles = [];
+            }
+        }
+
+        function moveUnit(unit, newX, newY) {
+            const oldTile = map[unit.y][unit.x];
+            const newTile = map[newY][newX];
+
+            if (unit.unitType === 'horseRider') {
+                if ((newTile.type === 'water' || newTile.type === 'river')) {
+                    unit.icon = '🐴';
+                } else {
+                    unit.icon = UNIT_DEFINITIONS.horseRider.icon;
+                }
+            }
+
+            map[unit.y][unit.x].unit = null;
+            unit.x = newX;
+            unit.y = newY;
+            map[newY][newX].unit = unit;
+
+            updateVisibility();
+
+            const maxCapacity = techTree.carryingCapacityLevel;
+
+            if (newTile.resource) {
+                if (newTile.village && unit.starsCarried === maxCapacity) {
+                    unit.starsCarried++;
+                    newTile.resource = false;
+                    activeAnimations.push({ type: 'resource', x: newX, y: newY, icon: '✨', startTime: performance.now(), duration: 700 });
+                } else if (unit.starsCarried < maxCapacity) {
+                    unit.starsCarried++;
+                    newTile.resource = false;
+                    activeAnimations.push({ type: 'resource', x: newX, y: newY, icon: '✨', startTime: performance.now(), duration: 700 });
+                }
+            }
+
+            if (newTile.village) {
+                newTile.village = false;
+                newTile.city = true;
+                if (!cities.some(c => c.x === newX && c.y === newY)) {
+                    cities.push({ x: newX, y: newY, population: 1, isHomeBase: false });
+                }
+            }
+
+            if (newTile.city && unit.starsCarried > 0) {
+                resources.stars += unit.starsCarried;
+                unit.starsCarried = 0;
+            }
+        }
+
+        function updateVisibility() {
+            const currentTurnClearVisionTiles = new Set(); 
+
+            units.forEach(unit => {
+                if (unit.unitType !== 'enemy') { 
+                    const visionRange = UNIT_VISION_RANGE;
+                    for (let dy = -visionRange; dy <= visionRange; dy++) {
+                        for (let dx = -visionRange; dx <= visionRange; dx++) {
+                            const nx = unit.x + dx;
+                            const ny = unit.y + dy;
+                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                                currentTurnClearVisionTiles.add(`${nx},${ny}`);
+                                map[ny][nx].maxVisibilityAchieved = Math.max(map[ny][nx].maxVisibilityAchieved, 2);
+                            }
+                        }
+                    }
+                }
+            });
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    if (currentTurnClearVisionTiles.has(`${x},${y}`)) { 
+                        const neighbors = [
+                            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
+                            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
+                            {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
+                        ];
+                        for (const {dx, dy} of neighbors) {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                                if (!currentTurnClearVisionTiles.has(`${nx},${ny}`)) {
+                                    map[ny][nx].maxVisibilityAchieved = Math.max(map[ny][nx].maxVisibilityAchieved, 1);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function enemyTurn() {
+            const enemyUnits = units.filter(unit => unit.unitType === 'enemy');
+            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
+
+            const currentTurnClearVisionTiles = new Set();
+            playerUnits.forEach(unit => {
+                for (let dy = -UNIT_VISION_RANGE; dy <= UNIT_VISION_RANGE; dy++) {
+                    for (let dx = -UNIT_VISION_RANGE; dx <= UNIT_VISION_RANGE; dx++) {
+                        const nx = unit.x + dx;
+                        const ny = unit.y + dy;
+                        if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                            currentTurnClearVisionTiles.add(`${nx},${ny}`);
+                        }
+                    }
+                }
+            });
+
+            enemyUnits.forEach(enemy => {
+                const oldX = enemy.x;
+                const oldY = enemy.y;
+                let acted = false;
+
+                const neighbors = [
+                    {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
+                    {dx: -1, dy: 0},                   {dx: 1, dy: 0},
+                    {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
+                ];
+
+                const adjacentPlayerUnits = [];
+                for (const {dx, dy} of neighbors) {
+                    const nx = enemy.x + dx;
+                    const ny = enemy.y + dy;
+
+                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                        const targetTile = map[ny][nx];
+                        if (targetTile.unit && targetTile.unit.unitType !== 'enemy') {
+                            adjacentPlayerUnits.push(targetTile.unit);
+                        }
+                    }
+                }
+
+                if (adjacentPlayerUnits.length > 0) {
+                    const targetUnit = adjacentPlayerUnits[Math.floor(Math.random() * adjacentPlayerUnits.length)];
+                    handleCombat(enemy, targetUnit, targetUnit.x, targetUnit.y);
+                    acted = true;
+                } 
+                
+                if (!acted) {
+                    const possibleMoves = [];
+                    for (const {dx, dy} of neighbors) {
+                        const nx = enemy.x + dx;
+                        const ny = enemy.y + dy;
+
+                        if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+                            const targetTile = map[ny][nx];
+                            if (!targetTile.unit && getMovementCost(targetTile.type, enemy.unitType) !== Infinity) {
+                                possibleMoves.push({x: nx, y: ny});
+                            }
+                        }
+                    }
+
+                    if (possibleMoves.length > 0) {
+                        const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                        
+                        const wasVisibleOnMap = map[oldY][oldX].maxVisibilityAchieved >= 1; 
+
+                        map[enemy.y][enemy.x].unit = null;
+                        enemy.x = randomMove.x;
+                        enemy.y = randomMove.y;
+                        map[enemy.y][enemy.x].unit = enemy;
+                        acted = true;
+
+                        const isNowInUnexploredFog = map[enemy.y][enemy.x].maxVisibilityAchieved === 0;
+
+                        if (wasVisibleOnMap && isNowInUnexploredFog) {
+                            activeAnimations.push({ type: 'poof', x: enemy.x, y: enemy.y, icon: '💨', startTime: performance.now(), duration: 700 });
+                        }
+                    }
+                }
+            });
+            updateVisibility();
+        }
+
+        function resetInteractionState() {
+            isDragging = false;
+            interactionStartCoords = null;
+            interactionStartTile = null;
+        }
+
+        function endTurn() {
+            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
+            const unitsStillActive = playerUnits.filter(unit => (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
+
+            if (unitsStillActive.length > 0) {
+                closeAllModals();
+                unitsWithMovesList.innerHTML = '';
+                unitsStillActive.forEach(unit => {
+                    const listItem = document.createElement('p');
+                    let status = '';
+                    if (unit.movesRemaining > 0) status += `${unit.movesRemaining} moves left`;
+                    if (canUnitAttack(unit)) {
+                        if (status) status += ', ';
+                        status += 'can attack';
+                    }
+                    listItem.textContent = `- ${unit.unitType} at (${unit.x}, ${unit.y}): ${status}`;
+                    unitsWithMovesList.appendChild(listItem);
+                });
+                confirmEndTurnModal.style.display = 'flex';
+            } else {
+                proceedEndTurn();
+            }
+        }
+
+        function proceedEndTurn() {
+            turnCount++;
+            units.forEach(unit => {
+                if (unit.unitType !== 'enemy') {
+                    unit.movesRemaining = UNIT_DEFINITIONS[unit.unitType].moves;
+                    unit.hasAttackedThisTurn = false; 
+                    unit.justTrained = false; 
+                    
+                    if (unit.unitType === 'horseRider') {
+                        const currentTile = map[unit.y][unit.x];
+                        if (!(currentTile.type === 'water' || currentTile.type === 'river')) {
+                            unit.icon = UNIT_DEFINITIONS.horseRider.icon;
+                        }
+                    }
+                }
+            });
+            deselectUnit();
+            turnActions = [];
+            enemyTurn();
+            updateHUD();
+            closeAllModals();
+
+            if (checkWinCondition()) {
+                showWinModal();
+            }
+        }
+
+        function buyUpgrade(upgradeType) {
+            const upgrade = UPGRADES[upgradeType];
+
+            if (resources.stars >= upgrade.cost) {
+                if (upgradeType.startsWith('carryingCapacity')) {
+                    const level = upgrade.level;
+                    if (techTree.carryingCapacityLevel < level) {
+                        saveStateForUndo();
+                        resources.stars -= upgrade.cost;
+                        techTree.carryingCapacityLevel = level;
+                        
+                        units.forEach(unit => {
+                            const tile = map[unit.y][unit.x];
+                            if (tile.resource && unit.starsCarried < techTree.carryingCapacityLevel) {
+                                unit.starsCarried++;
+                                tile.resource = false;
+                            }
+                        });
+
+                    } else {
+                        updateTechTreeButtons();
+                        return;
+                    }
+                } else if (!techTree[upgradeType]) {
+                    saveStateForUndo();
+                    resources.stars -= upgrade.cost;
+                    techTree[upgradeType] = true;
+
+                } else {
+                    updateTechTreeButtons();
+                    return;
+                }
+
+                updateHUD();
+                updateTechTreeButtons();
+                updateCityMenuButtons();
+                updateCostDisplays();
+            } else {
+            }
+        }
+
+        function trainUnit(unitType) {
+            const unitDef = UNIT_DEFINITIONS[unitType];
+            const cost = unitDef.cost;
+            const cityTile = selectedCity ? map[selectedCity.y][selectedCity.x] : null;
+
+            if (!cityTile) {
+                return;
+            }
+            if (cityTile.unit) {
+                return;
+            }
+            if (resources.stars < cost) {
+                return;
+            }
+            if (unitType === 'horseRider' && !techTree.horseRiding) {
+                return;
+            }
+            if (unitType === 'archer' && !techTree.archerTech) {
+                return;
+            }
+            if (unitType === 'defender' && !techTree.defenderTech) {
+                return;
+            }
+
+            saveStateForUndo();
+            resources.stars -= cost;
+            const newUnit = {
+                id: nextUnitId++,
+                unitType: unitType,
+                x: selectedCity.x,
+                y: selectedCity.y,
+                movesRemaining: unitDef.moves,
+                selected: false,
+                starsCarried: 0,
+                health: unitDef.health,
+                maxHealth: unitDef.health,
+                attack: unitDef.attack,
+                defense: unitDef.defense,
+                range: unitDef.range,
+                hasAttackedThisTurn: false,
+                justTrained: true,
+                kills: 0,
+                icon: unitDef.icon
+            };
+            units.push(newUnit);
+            map[selectedCity.y][selectedCity.x].unit = newUnit;
+
+            updateVisibility(); 
+            closeAllModals();
+            selectedCity = null;
+            updateHUD();
+            updateTechTreeButtons();
+            updateCityMenuButtons();
+            updateCostDisplays();
+        }
+
+        async function getStrategicAdvice() {
+            showMessage("Getting strategic advice...", 5000);
+            const gameState = {
+                turn: turnCount,
+                resources: resources,
+                techTree: techTree,
+                units: units.map(u => ({
+                    unitType: u.unitType,
+                    x: u.x,
+                    y: u.y,
+                    movesRemaining: u.movesRemaining,
+                    health: u.health,
+                    maxHealth: u.maxHealth,
+                    attack: u.attack,
+                    defense: u.defense,
+                    range: u.range,
+                    starsCarried: u.starsCarried,
+                    hasAttackedThisTurn: u.hasAttackedThisTurn,
+                    justTrained: u.justTrained,
+                    canAttack: canUnitAttack(u)
+                })),
+                cities: cities.map(c => ({
+                    x: c.x,
+                    y: c.y,
+                    population: c.population,
+                    isHomeBase: c.isHomeBase,
+                    hasUnit: map[c.y][c.x].unit !== null 
+                })),
+                mapInfo: map.flat().filter(tile => tile.maxVisibilityAchieved > 0).map(tile => ({
+                    type: tile.type,
+                    city: tile.city,
+                    village: tile.village,
+                    resource: tile.resource
+                })),
+                winCondition: currentWinCondition,
+                winConditionTarget: winConditionTarget
+            };
+
+            const prompt = `
+                You are a strategic AI for a turn-based strategy game called Emojitopia.
+                The player controls units and cities, collects stars, and unlocks technologies.
+                The goal is to achieve a specific win condition.
+
+                Here is the current game state:
+                ${JSON.stringify(gameState, null, 2)}
+
+                Based on this game state, provide concise strategic advice for the player's next moves.
+                Consider the following:
+                - Current resources (stars).
+                - Available technologies and which ones might be beneficial to unlock.
+                - Unit positioning, movement, and potential attacks.
+                - City management (training units, capturing villages).
+                - The current win condition.
+                - Fog of War (unexplored areas).
+
+                Suggest 1-3 actionable steps. Focus on immediate tactical and short-term strategic advice.
+                Keep the response brief and to the point.
+            `;
+
+            try {
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }] })
+                });
+
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0 && result.candidates[0].content && result.candidates[0].content.parts && result.candidates[0].content.parts.length > 0) {
+                    const advice = result.candidates[0].content.parts[0].text;
+                    showMessage(`Strategic Advice: ${advice}`, 8000);
+                } else {
+                    showMessage("Failed to get strategic advice. Please try again.", 3000);
+                }
+            } catch (error) {
+                console.error("Error fetching strategic advice:", error);
+                showMessage("Error getting strategic advice. Check console for details.", 3000);
+            }
+        }
+
+
+        canvas.addEventListener('mousedown', handleInteractionStart);
+        canvas.addEventListener('mousemove', handleInteractionMove); 
+        canvas.addEventListener('mouseup', handleInteractionEnd);
+        canvas.addEventListener('touchstart', handleInteractionStart, { passive: false });
+        canvas.addEventListener('touchmove', handleInteractionMove, { passive: false }); 
+        canvas.addEventListener('touchend', handleInteractionEnd, { passive: false });
+
+        endTurnButton.addEventListener('click', endTurn);
+        undoButton.addEventListener('click', undoLastAction);
+        techTreeButton.addEventListener('click', () => {
+            closeAllModals();
+            techTreeModal.style.display = 'flex';
+            updateTechTreeButtons();
+        });
+
+        closeTechTreeButton.addEventListener('click', () => {
+            closeAllModals();
+        });
+        closeCityMenuButton.addEventListener('click', () => {
+            closeAllModals();
+            selectedCity = null;
+        });
+        confirmEndTurnYesButton.addEventListener('click', () => {
+            proceedEndTurn();
+        });
+        confirmEndTurnNoButton.addEventListener('click', () => {
+            closeAllModals();
+        });
+
+        hamburgerMenuIcon.addEventListener('click', () => {
+            closeAllModals();
+            optionsModal.style.display = 'flex';
+        });
+
+        closeOptionsButton.addEventListener('click', () => {
+            closeAllModals();
+        });
+
+        exportGameStateButton.addEventListener('click', exportGameState);
+        getStrategicAdviceButton.addEventListener('click', getStrategicAdvice);
+
+        techTreeFromCityButton.addEventListener('click', () => {
+            closeAllModals();
+            techTreeModal.style.display = 'flex';
+            updateTechTreeButtons();
+        });
+
+        winModalCloseButton.addEventListener('click', () => {
+            closeAllModals();
+            initGame();
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === techTreeModal || event.target === cityMenuModal || event.target === cityInteractionModal || event.target === confirmEndTurnModal || event.target === optionsModal || event.target === winModal) {
+                closeAllModals();
+                selectedCity = null;
+            }
+        });
+
+        buyMountainClimbingButton.addEventListener('click', () => buyUpgrade('mountainClimbing'));
+        buySwimmingButton.addEventListener('click', () => buyUpgrade('swimming'));
+        buyHorseRidingButton.addEventListener('click', () => buyUpgrade('horseRiding'));
+        buyCarryingCapacity2Button.addEventListener('click', () => buyUpgrade('carryingCapacity2'));
+        buyCarryingCapacity3Button.addEventListener('click', () => buyUpgrade('carryingCapacity3'));
+        buyCarryingCapacity4Button.addEventListener('click', () => buyUpgrade('carryingCapacity4'));
+        buyArcherTechButton.addEventListener('click', () => buyUpgrade('archerTech'));
+        buyDefenderTechButton.addEventListener('click', () => buyUpgrade('defenderTech'));
+
+        trainExplorerButton.addEventListener('click', () => trainUnit('explorer'));
+        trainHorseRiderButton.addEventListener('click', () => trainUnit('horseRider'));
+        trainArcherButton.addEventListener('click', () => trainUnit('archer'));
+        trainDefenderButton.addEventListener('click', () => trainUnit('defender'));
+
+        selectUnitFromCityButton.addEventListener('click', () => {
+            closeAllModals();
+            if (selectedCity && map[selectedCity.y][selectedCity.x].unit) {
+                saveStateForUndo();
+                selectUnit(map[selectedCity.y][selectedCity.x].unit);
+                updateHighlightTiles(selectedUnit); 
+                updateHUD();
+            }
+            selectedCity = null;
+        });
+
+        openCityMenuFromInteractionButton.addEventListener('click', () => {
+            closeAllModals();
+            if (selectedCity) {
+                cityMenuModal.style.display = 'flex';
+                updateCityMenuButtons();
+            }
+        });
+
+        window.onload = initGame;
+
+        window.addEventListener('resize', () => {
+            const parentWidth = canvas.parentElement.clientWidth;
+            const parentHeight = canvas.parentElement.clientHeight;
+            const newSize = Math.min(parentWidth * 0.95, parentHeight * 0.75, MAP_SIZE * TILE_SIZE);
+            
+            canvas.style.width = `${newSize}px`;
+            canvas.style.height = `${newSize}px`;
+
+            hudElement.style.width = `${newSize}px`;
+            hudElement.style.maxWidth = `${newSize}px`;
+        });
+        window.dispatchEvent(new Event('resize'));
+    </script>
+</body>
+</html>
