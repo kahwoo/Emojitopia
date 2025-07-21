@@ -305,10 +305,13 @@
             <span class="close-button options-close">&times;</span>
             <h2>Options</h2>
             <div class="item">
-                <button id="exportGameStateButton" class="game-button">Export Gamestate</button>
+                <button id="giveUpButton" class="game-button">Give Up</button>
             </div>
             <div class="item">
-                <button id="getStrategicAdviceButton" class="game-button">✨ Get Strategic Advice</button>
+                <button id="saveLevelButton" class="game-button">Save Level</button>
+            </div>
+            <div class="item">
+                <button id="loadLevelButton" class="game-button">Load Level</button>
             </div>
         </div>
     </div>
@@ -357,7 +360,7 @@
     <div id="cityMenuModal" class="modal">
         <div class="modal-content">
             <span class="close-button city-menu-close">&times;</span>
-            <h2>City Actions</h2>
+            <h2>City Actions <button id="techTreeFromCityButton" class="game-button" style="float: right; margin-top: -5px;">Tech Tree</button></h2>
             <div id="cityActionsList">
                 <div class="item">
                     <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
@@ -374,10 +377,6 @@
                 <div class="item">
                     <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
                     <button id="trainDefenderButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Tech Tree</span>
-                    <button id="techTreeFromCityButton" class="game-button">Open</button>
                 </div>
             </div>
         </div>
@@ -448,8 +447,9 @@
         const hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
         const optionsModal = document.getElementById('optionsModal');
         const closeOptionsButton = document.querySelector('.options-close');
-        const exportGameStateButton = document.getElementById('exportGameStateButton');
-        const getStrategicAdviceButton = document.getElementById('getStrategicAdviceButton');
+        const giveUpButton = document.getElementById('giveUpButton'); // Renamed from restartLevelButton
+        const saveLevelButton = document.getElementById('saveLevelButton');     
+        const loadLevelButton = document.getElementById('loadLevelButton');     
         const techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
         const messageBox = document.getElementById('messageBox');
         const winModal = document.getElementById('winModal');
@@ -503,6 +503,7 @@
 
         let currentWinCondition = null;
         let winConditionTarget = 0;
+        let hasGameStartedPlaying = false; // New flag to control win condition check
 
         let nextUnitId = 1;
 
@@ -563,6 +564,7 @@
             canvas.height = MAP_SIZE * TILE_SIZE;
 
             winModal.style.display = 'none';
+            hasGameStartedPlaying = false; // Reset flag on new game init
 
             if (typeof __initial_game_state !== 'undefined' && __initial_game_state) {
                 loadGameState(__initial_game_state);
@@ -574,6 +576,7 @@
 
         function initGameDefaults() {
             winModal.style.display = 'none';
+            hasGameStartedPlaying = false; // Reset flag on new game defaults
 
             resources.stars = 2;
             techTree = {
@@ -600,15 +603,14 @@
             selectWinCondition();
 
             updateVisibility();
-            updateHUD();
-            updateTechTreeButtons();
-            updateCityMenuButtons();
-            updateCostDisplays();
+            updateAllUI();
         }
 
         function loadGameState(gameStateJson) {
             try {
                 winModal.style.display = 'none';
+                hasGameStartedPlaying = false; // Reset flag on load
+
                 const state = JSON.parse(gameStateJson);
 
                 map = state.map.map(row => row.map(tile => ({
@@ -657,12 +659,10 @@
 
                 currentWinCondition = state.currentWinCondition;
                 winConditionTarget = state.winConditionTarget;
+                hasGameStartedPlaying = state.hasGameStartedPlaying; // Restore the flag
 
                 updateVisibility();
-                updateHUD();
-                updateTechTreeButtons();
-                updateCityMenuButtons();
-                updateCostDisplays();
+                updateAllUI();
                 drawGame();
             } catch (e) {
                 showMessage("Failed to load game state. Starting a new game.");
@@ -687,6 +687,9 @@
         }
 
         function checkWinCondition() {
+            // Only check for win if the game has started playing (i.e., at least one turn completed)
+            if (!hasGameStartedPlaying) return false;
+
             switch (currentWinCondition.type) {
                 case 'captureAllCities':
                     const remainingVillages = map.flat().filter(tile => tile.village).length;
@@ -1094,7 +1097,7 @@
                 const elapsed = now - anim.startTime;
                 if (elapsed < anim.duration) {
                     const screenX = anim.x * TILE_SIZE;
-                    const screenY = anim.y * TILE_SIZE;
+                    const screenY = anim.y * TILE_SIZE; 
                     let displayY = screenY;
 
                     ctx.save(); 
@@ -1259,6 +1262,14 @@
             trainDefenderButton.parentElement.style.display = techTree.defenderTech ? 'flex' : 'none';
         }
 
+        // Consolidated UI update function
+        function updateAllUI() {
+            updateHUD();
+            updateTechTreeButtons();
+            updateCityMenuButtons();
+            updateCostDisplays();
+        }
+
         function getTileCoords(event) {
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
@@ -1397,7 +1408,8 @@
                 techTree: JSON.parse(JSON.stringify(techTree)),
                 turnCount: turnCount,
                 currentWinCondition: currentWinCondition,
-                winConditionTarget: winConditionTarget
+                winConditionTarget: winConditionTarget,
+                hasGameStartedPlaying: hasGameStartedPlaying 
             };
             turnActions.push(state);
         }
@@ -1414,6 +1426,7 @@
                 turnCount = restoredState.turnCount;
                 currentWinCondition = restoredState.currentWinCondition;
                 winConditionTarget = restoredState.winConditionTarget;
+                hasGameStartedPlaying = restoredState.hasGameStartedPlaying; 
 
                 selectedUnit = null;
                 if (restoredState.selectedUnitId !== null) {
@@ -1422,10 +1435,7 @@
                         selectedUnit.selected = true;
                     }
                 }
-                updateHUD();
-                updateTechTreeButtons();
-                updateCityMenuButtons();
-                updateCostDisplays();
+                updateAllUI();
             }
         }
 
@@ -1446,7 +1456,7 @@
             }, duration);
         }
 
-        function exportGameState() {
+        function saveGameState() { 
             const gameState = {
                 map: map.map(row => row.map(tile => ({
                     type: tile.type,
@@ -1497,13 +1507,14 @@
                 techTree: { ...techTree },
                 selectedUnitId: selectedUnit ? selectedUnit.id : null,
                 currentWinCondition: currentWinCondition,
-                winConditionTarget: winConditionTarget
+                winConditionTarget: winConditionTarget,
+                hasGameStartedPlaying: hasGameStartedPlaying 
             };
 
             const jsonString = JSON.stringify(gameState, null, 2);
-            console.log("--- GAME STATE EXPORT ---");
+            console.log("--- GAME STATE SAVE ---");
             console.log(jsonString);
-            console.log("--- END GAME STATE EXPORT ---");
+            console.log("--- END GAME STATE SAVE ---");
 
             const textarea = document.createElement('textarea');
             textarea.value = jsonString;
@@ -1521,6 +1532,21 @@
             document.body.removeChild(textarea);
         }
 
+        function importGameState() { 
+            const jsonInput = prompt("Paste your game state JSON here:");
+            if (jsonInput) {
+                try {
+                    loadGameState(jsonInput);
+                    showMessage("Game state loaded successfully!");
+                } catch (e) {
+                    showMessage("Invalid game state format. Please try again.");
+                    console.error("Error loading game state:", e);
+                }
+            } else {
+                showMessage("Load cancelled.");
+            }
+        }
+
 
         function handleInteractionStart(event) {
             event.preventDefault();
@@ -1529,7 +1555,7 @@
             interactionStartTile = { x: tileX, y: tileY }; 
             isDragging = false; 
             closeAllModals();
-            updateHUD(); 
+            updateAllUI(); 
         }
 
         function handleInteractionMove(event) {
@@ -1565,7 +1591,7 @@
             if (!tileAtTarget) {
                 deselectUnit(); 
                 closeAllModals();
-                updateHUD();
+                updateAllUI();
                 resetInteractionState();
                 return;
             }
@@ -1595,7 +1621,7 @@
                     selectedCity = cityOnTargetTile;
                     closeAllModals();
                     cityMenuModal.style.display = 'flex';
-                    updateCityMenuButtons();
+                    updateAllUI();
                     actionCompleted = true;
                     deselectUnit(); 
                 } else { 
@@ -1621,7 +1647,7 @@
                 selectedCity = cityOnTargetTile;
                 closeAllModals();
                 cityMenuModal.style.display = 'flex';
-                updateCityMenuButtons();
+                updateAllUI();
                 actionCompleted = true;
             }
             else {
@@ -1653,7 +1679,7 @@
             }
             
             resetInteractionState();
-            updateHUD();
+            updateAllUI();
         }
 
         function handleCombat(attacker, defender, targetX, targetY) {
@@ -1978,7 +2004,8 @@
             deselectUnit();
             turnActions = [];
             enemyTurn();
-            updateHUD();
+            hasGameStartedPlaying = true; // Set flag after the first turn is completed
+            updateAllUI();
             closeAllModals();
 
             if (checkWinCondition()) {
@@ -2006,7 +2033,7 @@
                         });
 
                     } else {
-                        updateTechTreeButtons();
+                        updateAllUI();
                         return;
                     }
                 } else if (!techTree[upgradeType]) {
@@ -2015,14 +2042,11 @@
                     techTree[upgradeType] = true;
 
                 } else {
-                    updateTechTreeButtons();
+                    updateAllUI();
                     return;
                 }
 
-                updateHUD();
-                updateTechTreeButtons();
-                updateCityMenuButtons();
-                updateCostDisplays();
+                updateAllUI();
             } else {
             }
         }
@@ -2077,13 +2101,11 @@
             updateVisibility(); 
             closeAllModals();
             selectedCity = null;
-            updateHUD();
-            updateTechTreeButtons();
-            updateCityMenuButtons();
-            updateCostDisplays();
+            updateAllUI();
         }
 
         async function getStrategicAdvice() {
+            // This function is no longer called from the UI, but kept for reference if needed elsewhere.
             showMessage("Getting strategic advice...", 5000);
             const gameState = {
                 turn: turnCount,
@@ -2177,7 +2199,7 @@
         techTreeButton.addEventListener('click', () => {
             closeAllModals();
             techTreeModal.style.display = 'flex';
-            updateTechTreeButtons();
+            updateAllUI();
         });
 
         closeTechTreeButton.addEventListener('click', () => {
@@ -2203,13 +2225,18 @@
             closeAllModals();
         });
 
-        exportGameStateButton.addEventListener('click', exportGameState);
-        getStrategicAdviceButton.addEventListener('click', getStrategicAdvice);
+        giveUpButton.addEventListener('click', () => { // Renamed event listener
+            closeAllModals();
+            initGameDefaults(); // Restart the level
+            showMessage("You gave up! Starting a new level.");
+        });
+        saveLevelButton.addEventListener('click', saveGameState); 
+        loadLevelButton.addEventListener('click', importGameState); 
 
         techTreeFromCityButton.addEventListener('click', () => {
             closeAllModals();
             techTreeModal.style.display = 'flex';
-            updateTechTreeButtons();
+            updateAllUI();
         });
 
         winModalCloseButton.addEventListener('click', () => {
@@ -2244,7 +2271,7 @@
                 saveStateForUndo();
                 selectUnit(map[selectedCity.y][selectedCity.x].unit);
                 updateHighlightTiles(selectedUnit); 
-                updateHUD();
+                updateAllUI();
             }
             selectedCity = null;
         });
@@ -2253,7 +2280,7 @@
             closeAllModals();
             if (selectedCity) {
                 cityMenuModal.style.display = 'flex';
-                updateCityMenuButtons();
+                updateAllUI();
             }
         });
 
