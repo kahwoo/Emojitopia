@@ -260,7 +260,7 @@
             border-radius: 5px;
             display: none;
             z-index: 1000;
-            white-space: nowrap;
+            white-space: normal; /* Changed from nowrap to normal */
         }
 
         #winModal {
@@ -605,8 +605,8 @@
         const UNIT_DEFINITIONS = {
             explorer: { cost: 1, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '🚶' },
             horseRider: { cost: 3, moves: 2, health: 1, attack: 1, defense: 0, range: 1, icon: '🏇' },
-            archer: { cost: 2, moves: 1, health: 1, attack: 1, defense: 0, range: 2, icon: '🏹' },     
-            defender: { cost: 2, moves: 1, health: 2, attack: 1, defense: 1, range: 1, icon: '🛡️' },
+            archer: { cost: 2, moves: 1, health: 1, attack: 1, defense: 0, range: 2, icon: '🙋' }, // Base icon for archer
+            defender: { cost: 2, moves: 1, health: 2, attack: 1, defense: 1, range: 1, icon: '🧑‍🍼' }, // Base icon for defender
             enemy: { cost: 0, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '💀' }
         };
 
@@ -668,6 +668,8 @@
 
             updateVisibility();
             updateAllUI();
+            // Show objective as a message at the start
+            showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
         }
 
         function initGameWithMap(initialMapState) {
@@ -753,6 +755,10 @@
             updateVisibility();
             updateAllUI();
             showMessage("Initial map loaded successfully! New game started.");
+            // Show objective message after a short delay to avoid immediate overlap
+            setTimeout(() => {
+                showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
+            }, 2500);
         }
 
         function loadGameState(gameStateJson) {
@@ -778,7 +784,20 @@
                 units.forEach(unit => {
                     if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
                         map[unit.y][unit.x].unit = unit; 
-                        unit.icon = unit.icon || UNIT_DEFINITIONS[unit.unitType].icon; 
+                        // Ensure icons are correctly set based on current state and tech tree
+                        const currentTile = map[unit.y][unit.x];
+                        const isCurrentTileWater = (currentTile.type === 'water' || currentTile.type === 'river');
+                        if (techTree.swimming && isCurrentTileWater) {
+                            if (unit.unitType === 'explorer') {
+                                unit.icon = '🏊';
+                            } else if (unit.unitType === 'horseRider') {
+                                unit.icon = '🐴';
+                            } else if (unit.unitType === 'archer') {
+                                unit.icon = '🙆';
+                            }
+                        } else {
+                            unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
+                        }
                     } else {
                         units = units.filter(u => u.id !== unit.id);
                     }
@@ -810,6 +829,10 @@
                 updateAllUI();
                 drawGame();
                 showMessage("Game state loaded successfully!");
+                // Show objective message after a short delay to avoid immediate overlap
+                setTimeout(() => {
+                    showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
+                }, 2500);
             } catch (e) {
                 showMessage("Failed to load game state. Invalid format or data. Starting a new game.");
                 initGameDefaults();
@@ -1083,12 +1106,30 @@
                 
                 ctx.fillStyle = '#fff';
                 const unitIcon = tile.unit.icon; 
-                ctx.font = `${TILE_SIZE * 0.5}px Arial`;
+                ctx.font = `${TILE_SIZE * 0.4}px Arial`; // Made smaller
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
+                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); // Moved down slightly
                 
-                if (tile.unit.unitType !== 'enemy' && !tile.unit.selected && canUnitAttack(tile.unit)) {
+                // Overlay for Archer
+                if (tile.unit.unitType === 'archer') {
+                    ctx.save();
+                    ctx.globalAlpha = 1; // Ensure full opacity for overlay
+                    ctx.font = `${TILE_SIZE * 0.75}px Arial`; // Made even bigger
+                    ctx.fillText('🏹', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); // Moved down slightly
+                    ctx.restore();
+                }
+
+                // Overlay for Defender
+                if (tile.unit.unitType === 'defender') {
+                    ctx.save();
+                    ctx.globalAlpha = 1; // Ensure full opacity for overlay
+                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; // Same size as normal
+                    ctx.fillText('🛡️', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1); // Position above
+                    ctx.restore();
+                }
+
+                if (tile.unit.unitType !== 'enemy' && !tile.unit.selected && canUnitAttack(tile.unit) && !tile.unit.justTrained) { 
                     ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
                     ctx.lineWidth = 2;
                     ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
@@ -1103,13 +1144,22 @@
                     ctx.strokeRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                 }
                 if (tile.unit.starsCarried > 0) {
+                    ctx.save(); // Save the current canvas state
+                    ctx.textBaseline = 'bottom'; // Align text to the bottom for this section
+
+                    // Draw the number
                     ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
                     ctx.fillStyle = '#fff';
-                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.7, screenY + TILE_SIZE * 0.75); 
+                    ctx.textAlign = 'right'; 
+                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.78, screenY + TILE_SIZE * 0.95); 
+                    
+                    // Draw the star
                     ctx.font = `${TILE_SIZE * 0.3}px Arial`;
                     ctx.fillStyle = '#FFD700';
-                    ctx.fillText('★', screenX + TILE_SIZE * 0.85, screenY + TILE_SIZE * 0.25); 
-                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; 
+                    ctx.textAlign = 'left'; 
+                    ctx.fillText('★', screenX + TILE_SIZE * 0.78, screenY + TILE_SIZE * 0.95); 
+
+                    ctx.restore(); // Restore the previous canvas state (including textBaseline and textAlign)
                 }
                 ctx.font = `${TILE_SIZE * 0.25}px Arial`;
                 ctx.fillStyle = '#FF0000'; 
@@ -1622,7 +1672,12 @@
         }
 
         function showMessage(message, duration = 2000) {
-            messageBox.textContent = message;
+            let displayMessage = message;
+            const bracketIndex = message.indexOf('(');
+            if (bracketIndex !== -1) {
+                displayMessage = message.substring(0, bracketIndex) + '<br>' + message.substring(bracketIndex);
+            }
+            messageBox.innerHTML = displayMessage; // Use innerHTML for <br>
             messageBox.style.display = 'block';
             setTimeout(() => {
                 messageBox.style.display = 'none';
@@ -1772,7 +1827,7 @@
             if (interactionStartCoords && interactionStartTile) { 
                 const dist = Math.sqrt(
                     Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) + 
-                    Math.pow(currentPointerCoords.y - interactionStartCoords.y, 2) 
+                    Math.pow(currentPointerCoords.y - interactionPointerCoords.y, 2) 
                 );
                 if (dist > DRAG_THRESHOLD) {
                     isDragging = true;
@@ -1993,18 +2048,23 @@
             const oldTile = map[unit.y][unit.x];
             const newTile = map[newY][newX];
 
-            if (unit.unitType === 'horseRider') {
-                if ((newTile.type === 'water' || newTile.type === 'river')) {
-                    unit.icon = '🐴';
-                } else {
-                    unit.icon = UNIT_DEFINITIONS.horseRider.icon;
-                }
-            }
-
             map[unit.y][unit.x].unit = null;
             unit.x = newX;
             unit.y = newY;
             map[newY][newX].unit = unit;
+
+            const isNewTileWater = (newTile.type === 'water' || newTile.type === 'river');
+            if (techTree.swimming && isNewTileWater) {
+                if (unit.unitType === 'explorer') {
+                    unit.icon = '🏊';
+                } else if (unit.unitType === 'horseRider') {
+                    unit.icon = '🐴';
+                } else if (unit.unitType === 'archer') {
+                    unit.icon = '🙆';
+                }
+            } else {
+                unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
+            }
 
             updateVisibility();
 
@@ -2199,11 +2259,19 @@
                     unit.hasAttackedThisTurn = false; 
                     unit.justTrained = false; 
                     
-                    if (unit.unitType === 'horseRider') {
-                        const currentTile = map[unit.y][unit.x];
-                        if (!(currentTile.type === 'water' || currentTile.type === 'river')) {
-                            unit.icon = UNIT_DEFINITIONS.horseRider.icon;
+                    const currentTile = map[unit.y][unit.x];
+                    const isCurrentTileWater = (currentTile.type === 'water' || currentTile.type === 'river');
+
+                    if (techTree.swimming && isCurrentTileWater) {
+                        if (unit.unitType === 'explorer') {
+                            unit.icon = '🏊';
+                        } else if (unit.unitType === 'horseRider') {
+                            unit.icon = '🐴';
+                        } else if (unit.unitType === 'archer') {
+                            unit.icon = '🙆';
                         }
+                    } else {
+                        unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
                     }
                 }
             });
@@ -2302,8 +2370,21 @@
                 hasAttackedThisTurn: false,
                 justTrained: true,
                 kills: 0,
-                icon: unitDef.icon
+                icon: unitDef.icon // Default icon
             };
+
+            // Apply swimming icon if applicable at training
+            const isCityWater = (cityTile.type === 'water' || cityTile.type === 'river');
+            if (techTree.swimming && isCityWater) {
+                if (newUnit.unitType === 'explorer') {
+                    newUnit.icon = '🏊';
+                } else if (newUnit.unitType === 'horseRider') {
+                    newUnit.icon = '🐴';
+                } else if (newUnit.unitType === 'archer') {
+                    newUnit.icon = '🙆';
+                }
+            }
+
             units.push(newUnit);
             map[selectedCity.y][selectedCity.x].unit = newUnit;
 
@@ -2362,7 +2443,7 @@
             showMessage("You gave up! Starting a new level.");
         });
         saveLevelButton.addEventListener('click', saveGameState); 
-        loadLevelButton.addEventListener('click', importGameState); 
+        loadLevelButton.addEventListener('click', () => importGameState()); 
         saveInitialMapButton.addEventListener('click', saveInitialMap); 
         loadInitialMapButton.addEventListener('click', () => loadInitialMap());
 
