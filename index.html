@@ -263,7 +263,7 @@
             white-space: normal; /* Changed from nowrap to normal */
         }
 
-        #winModal {
+        #winModal, #loseModal {
             display: none;
             position: fixed;
             z-index: 1000;
@@ -287,7 +287,19 @@
             border-radius: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
-        #winModal .modal-content .button-group {
+        #loseModal .modal-content {
+            background-color: #C62828; /* Dull red for lose */
+            border: 2px solid #B71C1C; /* Darker dull red */
+            color: white;
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 30px;
+            border-radius: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        #winModal .modal-content .button-group,
+        #loseModal .modal-content .button-group {
             margin-top: 20px;
             justify-content: center;
         }
@@ -316,225 +328,85 @@
             width: auto; 
             height: auto; 
         }
+
+        .objective-completed {
+            text-decoration: line-through;
+            color: #aaffaa; /* Lighter green for completed objective */
+        }
     </style>
-</head>
-<body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="hud">
-        <div id="hud-top-row">
-            <div id="turnInfo">Turn: 1</div>
-            <div id="resourceInfo">Stars: ★ 0</div>
-            <div id="objectiveInfo">Objective: </div>
-            <div class="button-group">
-                <button id="undoButton" class="game-button">Undo</button>
-                <button id="techTreeButton" class="game-button">Tech Tree</button>
-                <button id="nextLevelButton" class="game-button" style="display: none;">Next Level</button>
-                <button id="endTurnButton" class="game-button">End Turn</button>
-            </div>
-        </div>
-        <div id="hud-bottom-row">
-            <div id="selectedUnitInfo">Selected: None</div>
-        </div>
-    </div>
-
-    <div id="hamburger-menu-icon">☰</div>
-
-    <div id="optionsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button options-close">&times;</span>
-            <h2>Options</h2>
-            <div class="item">
-                <button id="giveUpButton" class="game-button">Give Up</button>
-            </div>
-            <div class="item">
-                <button id="saveLevelButton" class="game-button">Save Current Game</button>
-            </div>
-            <div class="item">
-                <button id="loadLevelButton" class="game-button">Load Saved Game</button>
-            </div>
-            <div class="item">
-                <button id="saveInitialMapButton" class="game-button">Save Initial Map</button>
-            </div>
-            <div class="item">
-                <button id="loadInitialMapButton" class="game-button">Load Initial Map</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="techTreeModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button tech-tree-close">&times;</span>
-            <h2>Tech Tree</h2>
-            <div id="upgradesList">
-                <div class="item">
-                    <span>Mountain Climbing (Cost: <span id="mountainClimbingCost">1</span> Star)</span>
-                    <button id="buyMountainClimbing" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Swimming (Cost: <span id="swimmingCost">1</span> Star)</span>
-                    <button id="buySwimming" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Horse Riding (Cost: <span id="horseRidingCost">3</span> Stars)</span>
-                    <button id="buyHorseRiding" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Archery (Cost: <span id="archerTechCost">2</span> Stars)</span>
-                    <button id="buyArcherTech" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Fortification (Cost: <span id="defenderTechCost">2</span> Stars)</span>
-                    <button id="buyDefenderTech" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity2Item">
-                    <span>Carrying Capacity Lvl 2 (Cost: <span id="carryingCapacity2Cost">1</span> Star)</span>
-                    <button id="buyCarryingCapacity2" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity3Item" style="display: none;">
-                    <span>Carrying Capacity Lvl 3 (Cost: <span id="carryingCapacity3Cost">2</span> Stars)</span>
-                    <button id="buyCarryingCapacity3" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity4Item" style="display: none;">
-                    <span>Carrying Capacity Lvl 4 (Cost: <span id="carryingCapacity4Cost">3</span> Stars)</span>
-                    <button id="buyCarryingCapacity4" class="game-button">Buy</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="cityMenuModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button city-menu-close">&times;</span>
-            <h2>
-                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
-                City Actions 
-            </h2>
-            <div id="cityActionsList">
-                <div class="item">
-                    <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
-                    <button id="trainExplorerButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Horse Rider (Cost: <span id="horseRiderCost">2</span> Stars)</span>
-                    <button id="trainHorseRiderButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Archer (Cost: <span id="archerCost">3</span> Stars)</span>
-                    <button id="trainArcherButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
-                    <button id="trainDefenderButton" class="game-button">Train</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="cityInteractionModal" class="modal">
-        <div class="modal-content">
-            <h2>What would you like to do?</h2>
-            <div class="button-group" style="justify-content: center;">
-                <button id="selectUnitFromCity" class="game-button">Select Unit</button>
-                <button id="openCityMenuFromInteraction" class="game-button">Open City Menu</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmEndTurnModal" class="modal">
-        <div class="modal-content">
-            <h2>End Turn?</h2>
-            <p>Some units still have actions remaining. Are you sure you want to end your turn?</p>
-            <div id="unitsWithMovesList"></div>
-            <div class="checkbox-container">
-                <input type="checkbox" id="dontAskAgainCheckbox">
-                <label for="dontAskAgainCheckbox">Don't ask me again</label>
-            </div>
-            <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                <button id="confirmEndTurnYes" class="game-button">Yes</button>
-                <button id="confirmEndTurnNo" class="game-button">No</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="messageBox"></div>
-
-    <div id="winModal" class="modal">
-        <div class="modal-content">
-            <p>YOU WIN!</p>
-            <div class="button-group">
-                <button id="winModalNewGameButton" class="game-button">New Game</button>
-                <button id="winModalKeepPlayingButton" class="game-button">Keep Playing</button>
-            </div>
-        </div>
-    </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const hudTurnInfo = document.getElementById('turnInfo');
-        const hudResourceInfo = document.getElementById('resourceInfo');
-        const hudSelectedUnitInfo = document.getElementById('selectedUnitInfo');
-        const hudObjectiveInfo = document.getElementById('objectiveInfo');
-        const endTurnButton = document.getElementById('endTurnButton');
-        const techTreeButton = document.getElementById('techTreeButton');
-        const undoButton = document.getElementById('undoButton');
-        const techTreeModal = document.getElementById('techTreeModal');
-        const cityMenuModal = document.getElementById('cityMenuModal');
-        const cityInteractionModal = document.getElementById('cityInteractionModal');
-        const confirmEndTurnModal = document.getElementById('confirmEndTurnModal');
-        const closeTechTreeButton = document.querySelector('.tech-tree-close');
-        const closeCityMenuButton = document.querySelector('.city-menu-close'); 
-        const confirmEndTurnYesButton = document.getElementById('confirmEndTurnYes');
-        const confirmEndTurnNoButton = document.getElementById('confirmEndTurnNo');
-        const dontAskAgainCheckbox = document.getElementById('dontAskAgainCheckbox'); 
-        const buyMountainClimbingButton = document.getElementById('buyMountainClimbing');
-        const buySwimmingButton = document.getElementById('buySwimming');
-        const buyHorseRidingButton = document.getElementById('buyHorseRiding');
-        const buyCarryingCapacity2Button = document.getElementById('buyCarryingCapacity2');
-        const buyCarryingCapacity3Button = document.getElementById('buyCarryingCapacity3');
-        const buyCarryingCapacity4Button = document.getElementById('buyCarryingCapacity4');
-        const trainExplorerButton = document.getElementById('trainExplorerButton');
-        const trainHorseRiderButton = document.getElementById('trainHorseRiderButton');
-        const trainArcherButton = document.getElementById('trainArcherButton');
-        const trainDefenderButton = document.getElementById('trainDefenderButton');
-        const selectUnitFromCityButton = document.getElementById('selectUnitFromCity');
-        const openCityMenuFromInteractionButton = document.getElementById('openCityMenuFromInteraction');
-        const hudElement = document.getElementById('hud');
-        const hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
-        const optionsModal = document.getElementById('optionsModal');
-        const closeOptionsButton = document.querySelector('.options-close');
-        const giveUpButton = document.getElementById('giveUpButton'); 
-        const saveLevelButton = document.getElementById('saveLevelButton');     
-        const loadLevelButton = document.getElementById('loadLevelButton');     
-        const saveInitialMapButton = document.getElementById('saveInitialMapButton');
-        const loadInitialMapButton = document.getElementById('loadInitialMapButton');
-        const techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
-        const messageBox = document.getElementById('messageBox');
-        const winModal = document.getElementById('winModal');
-        const winModalNewGameButton = document.getElementById('winModalNewGameButton'); 
-        const winModalKeepPlayingButton = document.getElementById('winModalKeepPlayingButton'); 
-        const nextLevelButton = document.getElementById('nextLevelButton'); 
-        const unitsWithMovesList = document.getElementById('unitsWithMovesList');
+        // Declare variables globally but initialize them inside DOMContentLoaded
+        let canvas;
+        let ctx;
+        let hudTurnInfo;
+        let hudResourceInfo;
+        let hudSelectedUnitInfo;
+        let hudObjectiveInfo;
+        let endTurnButton;
+        let techTreeButton;
+        let undoButton;
+        let techTreeModal;
+        let cityMenuModal;
+        let cityInteractionModal;
+        let confirmEndTurnModal;
+        let closeTechTreeButton;
+        let closeCityMenuButton;
+        let confirmEndTurnYesButton;
+        let confirmEndTurnNoButton;
+        let dontAskAgainCheckbox;
+        let buyMountainClimbingButton;
+        let buySwimmingButton;
+        let buyHorseRidingButton;
+        let buyCarryingCapacity2Button;
+        let buyCarryingCapacity3Button;
+        let buyCarryingCapacity4Button;
+        let trainExplorerButton;
+        let trainHorseRiderButton;
+        let trainArcherButton;
+        let trainDefenderButton;
+        let selectUnitFromCityButton;
+        let openCityMenuFromInteractionButton;
+        let hudElement;
+        let hamburgerMenuIcon;
+        let optionsModal;
+        let closeOptionsButton;
+        let giveUpButton;
+        let saveLevelButton;
+        let loadLevelButton;
+        let saveInitialMapButton;
+        let loadInitialMapButton;
+        let techTreeFromCityButton;
+        let messageBox;
+        let winModal;
+        let winModalNewGameButton;
+        let winModalKeepPlayingButton;
+        let nextLevelButton;
+        let unitsWithMovesList;
+        let loseModal;
+        let loseReasonDisplay;
+        let loseModalNewGameButton;
+        let loseModalKeepPlayingButton;
 
-        const carryingCapacity2Item = document.getElementById('carryingCapacity2Item');
-        const carryingCapacity3Item = document.getElementById('carryingCapacity3Item');
-        const carryingCapacity4Item = document.getElementById('carryingCapacity4Item');
+        let carryingCapacity2Item;
+        let carryingCapacity3Item;
+        let carryingCapacity4Item;
 
-        const mountainClimbingCostSpan = document.getElementById('mountainClimbingCost');
-        const swimmingCostSpan = document.getElementById('swimmingCost');
-        const horseRidingCostSpan = document.getElementById('horseRidingCost');
-        const carryingCapacity2CostSpan = document.getElementById('carryingCapacity2Cost');
-        const carryingCapacity3CostSpan = document.getElementById('carryingCapacity3Cost');
-        const carryingCapacity4CostSpan = document.getElementById('carryingCapacity4Cost');
-        const explorerCostSpan = document.getElementById('explorerCost');
-        const horseRiderCostSpan = document.getElementById('horseRiderCost');
-        const archerCostSpan = document.getElementById('archerCost');
-        const defenderCostSpan = document.getElementById('defenderCost');
-        const archerTechCostSpan = document.getElementById('archerTechCost');
-        const defenderTechCostSpan = document.getElementById('defenderTechCost');
+        let mountainClimbingCostSpan;
+        let swimmingCostSpan;
+        let horseRidingCostSpan;
+        let carryingCapacity2CostSpan;
+        let carryingCapacity3CostSpan;
+        let carryingCapacity4CostSpan;
+        let explorerCostSpan;
+        let horseRiderCostSpan;
+        let archerCostSpan;
+        let defenderCostSpan;
+        let archerTechCostSpan;
+        let defenderTechCostSpan;
 
-        const buyArcherTechButton = document.getElementById('buyArcherTech');
-        const buyDefenderTechButton = document.getElementById('buyDefenderTech');
+        let buyArcherTechButton;
+        let buyDefenderTechButton;
 
         const TILE_SIZE = 64;
         const MAP_SIZE = 10;
@@ -562,6 +434,9 @@
         let currentWinCondition = null;
         let winConditionTarget = 0;
         let hasGameStartedPlaying = false; 
+        let hasWonAndKeptPlaying = false; 
+        let hasLost = false; 
+        let loseReasonText = ""; // Store the reason for losing
 
         let nextUnitId = 1;
         let dontAskAgainForEndTurn = localStorage.getItem('dontAskAgainEndTurn') === 'true'; 
@@ -623,8 +498,13 @@
             canvas.height = MAP_SIZE * TILE_SIZE;
 
             winModal.style.display = 'none';
+            loseModal.style.display = 'none'; 
             hasGameStartedPlaying = false; 
             nextLevelButton.style.display = 'none'; 
+            hasWonAndKeptPlaying = false; 
+            hasLost = false; 
+            loseReasonText = ""; // Reset lose reason
+            hudObjectiveInfo.classList.remove('objective-completed'); 
 
             if (typeof __initial_game_state !== 'undefined' && __initial_game_state) {
                 loadGameState(__initial_game_state);
@@ -639,8 +519,13 @@
 
         function initGameDefaults() {
             winModal.style.display = 'none';
+            loseModal.style.display = 'none'; 
             hasGameStartedPlaying = false; 
             nextLevelButton.style.display = 'none'; 
+            hasWonAndKeptPlaying = false; 
+            hasLost = false; 
+            loseReasonText = ""; 
+            hudObjectiveInfo.classList.remove('objective-completed'); 
 
             resources.stars = 2;
             techTree = {
@@ -668,7 +553,6 @@
 
             updateVisibility();
             updateAllUI();
-            // Show objective as a message at the start
             showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
         }
 
@@ -691,8 +575,13 @@
             }
 
             winModal.style.display = 'none';
+            loseModal.style.display = 'none'; 
             hasGameStartedPlaying = false;
             nextLevelButton.style.display = 'none';
+            hasWonAndKeptPlaying = false; 
+            hasLost = false; 
+            loseReasonText = ""; 
+            hudObjectiveInfo.classList.remove('objective-completed'); 
 
             resources.stars = 2;
             techTree = {
@@ -755,7 +644,6 @@
             updateVisibility();
             updateAllUI();
             showMessage("Initial map loaded successfully! New game started.");
-            // Show objective message after a short delay to avoid immediate overlap
             setTimeout(() => {
                 showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
             }, 2500);
@@ -764,8 +652,13 @@
         function loadGameState(gameStateJson) {
             try {
                 winModal.style.display = 'none';
+                loseModal.style.display = 'none'; 
                 hasGameStartedPlaying = false; 
                 nextLevelButton.style.display = 'none'; 
+                hasWonAndKeptPlaying = false; 
+                hasLost = false; 
+                loseReasonText = ""; 
+                hudObjectiveInfo.classList.remove('objective-completed'); 
 
                 const state = JSON.parse(gameStateJson);
 
@@ -784,7 +677,6 @@
                 units.forEach(unit => {
                     if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
                         map[unit.y][unit.x].unit = unit; 
-                        // Ensure icons are correctly set based on current state and tech tree
                         const currentTile = map[unit.y][unit.x];
                         const isCurrentTileWater = (currentTile.type === 'water' || currentTile.type === 'river');
                         if (techTree.swimming && isCurrentTileWater) {
@@ -810,6 +702,15 @@
                 currentWinCondition = state.currentWinCondition;
                 winConditionTarget = state.winConditionTarget;
                 hasGameStartedPlaying = state.hasGameStartedPlaying; 
+                hasWonAndKeptPlaying = state.hasWonAndKeptPlaying || false; 
+                hasLost = state.hasLost || false; 
+                loseReasonText = state.loseReasonText || ""; 
+
+                if (hasWonAndKeptPlaying) {
+                    hudObjectiveInfo.classList.add('objective-completed');
+                } else if (hasLost) {
+                    showLoseModal(loseReasonText); // Pass the loaded reason
+                }
 
                 if (units.length > 0) {
                     nextUnitId = Math.max(...units.map(u => u.id)) + 1;
@@ -829,7 +730,6 @@
                 updateAllUI();
                 drawGame();
                 showMessage("Game state loaded successfully!");
-                // Show objective message after a short delay to avoid immediate overlap
                 setTimeout(() => {
                     showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
                 }, 2500);
@@ -853,6 +753,7 @@
                 winConditionTarget = units.filter(unit => unit.unitType === 'enemy').length;
                 hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text}`;
             }
+            hudObjectiveInfo.classList.remove('objective-completed'); 
         }
 
         function checkWinCondition() {
@@ -882,6 +783,56 @@
 
         function showWinModal() {
             winModal.style.display = 'flex';
+            hudObjectiveInfo.classList.add('objective-completed'); 
+        }
+
+        function showLoseModal(reason) {
+            loseReasonText = reason; // Set the reason
+            loseModal.style.display = 'flex';
+            
+            // Get the objective text, remove "Objective: " and punctuation
+            let objectiveCleanText = hudObjectiveInfo.textContent.replace('Objective: ', '');
+            objectiveCleanText = objectiveCleanText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""); // Remove common punctuation
+            objectiveCleanText = objectiveCleanText.replace(/\s{2,}/g," "); // Replace multiple spaces with single space
+
+            loseReasonDisplay.textContent = `Your current objective of ${objectiveCleanText} is no longer possible`;
+            hasLost = true; 
+        }
+
+        function checkLoseCondition() {
+            if (hasLost || hasWonAndKeptPlaying) return false; 
+
+            // Condition 1: No player units left
+            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
+            if (playerUnits.length === 0) {
+                showMessage("You have no units left!", 3000);
+                return true;
+            }
+
+            // Condition 2: No player cities left
+            if (cities.length === 0) {
+                showMessage("You have no cities left!", 3000);
+                return true;
+            }
+
+            // Condition 3: Cannot reach star objective (if applicable)
+            if (currentWinCondition.type === 'reachStarTotal') {
+                let starsOnMap = 0;
+                for (let y = 0; y < MAP_SIZE; y++) {
+                    for (let x = 0; x < MAP_SIZE; x++) {
+                        if (map[y][x].resource) {
+                            starsOnMap++;
+                        }
+                    }
+                }
+                const totalPotentialStars = resources.stars + starsOnMap;
+                if (totalPotentialStars < winConditionTarget) {
+                    showMessage(`Not enough stars left on the map to reach your objective (${totalPotentialStars}/${winConditionTarget})!`, 3000);
+                    return true;
+                }
+            }
+
+            return false; 
         }
 
         function generateMap() {
@@ -1106,26 +1057,24 @@
                 
                 ctx.fillStyle = '#fff';
                 const unitIcon = tile.unit.icon; 
-                ctx.font = `${TILE_SIZE * 0.4}px Arial`; // Made smaller
+                ctx.font = `${TILE_SIZE * 0.4}px Arial`; 
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); // Moved down slightly
+                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); 
                 
-                // Overlay for Archer
                 if (tile.unit.unitType === 'archer') {
                     ctx.save();
-                    ctx.globalAlpha = 1; // Ensure full opacity for overlay
-                    ctx.font = `${TILE_SIZE * 0.75}px Arial`; // Made even bigger
-                    ctx.fillText('🏹', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); // Moved down slightly
+                    ctx.globalAlpha = 1; 
+                    ctx.font = `${TILE_SIZE * 0.75}px Arial`; 
+                    ctx.fillText('🏹', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); 
                     ctx.restore();
                 }
 
-                // Overlay for Defender
                 if (tile.unit.unitType === 'defender') {
                     ctx.save();
-                    ctx.globalAlpha = 1; // Ensure full opacity for overlay
-                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; // Same size as normal
-                    ctx.fillText('🛡️', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1); // Position above
+                    ctx.globalAlpha = 1; 
+                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; 
+                    ctx.fillText('🛡️', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1); 
                     ctx.restore();
                 }
 
@@ -1144,22 +1093,34 @@
                     ctx.strokeRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
                 }
                 if (tile.unit.starsCarried > 0) {
-                    ctx.save(); // Save the current canvas state
-                    ctx.textBaseline = 'bottom'; // Align text to the bottom for this section
+                    ctx.save(); 
+                    ctx.textBaseline = 'alphabetic'; 
 
-                    // Draw the number
+                    const countText = String(tile.unit.starsCarried);
+                    const starText = '★';
+
+                    ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
+                    const countMetrics = ctx.measureText(countText);
+                    const countWidth = countMetrics.width;
+
+                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
+                    const starMetrics = ctx.measureText(starText);
+                    const starWidth = starMetrics.width;
+
+                    const totalWidth = countWidth + starWidth + 2; 
+                    const startXPos = screenX + TILE_SIZE - totalWidth - 3; 
+
                     ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
                     ctx.fillStyle = '#fff';
-                    ctx.textAlign = 'right'; 
-                    ctx.fillText(tile.unit.starsCarried, screenX + TILE_SIZE * 0.78, screenY + TILE_SIZE * 0.95); 
+                    ctx.textAlign = 'left'; 
+                    ctx.fillText(countText, startXPos, screenY + TILE_SIZE - 3); 
                     
-                    // Draw the star
                     ctx.font = `${TILE_SIZE * 0.3}px Arial`;
                     ctx.fillStyle = '#FFD700';
                     ctx.textAlign = 'left'; 
-                    ctx.fillText('★', screenX + TILE_SIZE * 0.78, screenY + TILE_SIZE * 0.95); 
+                    ctx.fillText(starText, startXPos + countWidth + 2, screenY + TILE_SIZE - 3); 
 
-                    ctx.restore(); // Restore the previous canvas state (including textBaseline and textAlign)
+                    ctx.restore(); 
                 }
                 ctx.font = `${TILE_SIZE * 0.25}px Arial`;
                 ctx.fillStyle = '#FF0000'; 
@@ -1334,6 +1295,11 @@
                     objectiveText = objectiveText.replace('{target}', winConditionTarget);
                 }
                 hudObjectiveInfo.textContent = `Objective: ${objectiveText}`;
+                if (hasWonAndKeptPlaying) {
+                    hudObjectiveInfo.classList.add('objective-completed');
+                } else {
+                    hudObjectiveInfo.classList.remove('objective-completed');
+                }
             }
 
             if (selectedUnit) {
@@ -1404,14 +1370,6 @@
             buyHorseRidingButton.disabled = techTree.horseRiding || resources.stars < UPGRADES.horseRiding.cost;
             if (techTree.horseRiding) buyHorseRidingButton.textContent = 'Unlocked!';
             else buyHorseRidingButton.textContent = 'Buy';
-
-            buyArcherTechButton.disabled = techTree.archerTech || resources.stars < UPGRADES.archerTech.cost;
-            if (techTree.archerTech) buyArcherTechButton.textContent = 'Unlocked!';
-            else buyArcherTechButton.textContent = 'Buy';
-
-            buyDefenderTechButton.disabled = techTree.defenderTech || resources.stars < UPGRADES.defenderTech.cost;
-            if (techTree.defenderTech) buyDefenderTechButton.textContent = 'Unlocked!';
-            else buyDefenderTechButton.textContent = 'Buy';
 
             carryingCapacity2Item.style.display = 'flex';
             carryingCapacity3Item.style.display = 'none';
@@ -1605,6 +1563,9 @@
                 currentWinCondition: currentWinCondition,
                 winConditionTarget: winConditionTarget,
                 hasGameStartedPlaying: hasGameStartedPlaying,
+                hasWonAndKeptPlaying: hasWonAndKeptPlaying, 
+                hasLost: hasLost, 
+                loseReasonText: loseReasonText, 
                 mapData: map.map(row => row.map(tile => ({
                     type: tile.type,
                     city: tile.city,
@@ -1630,6 +1591,21 @@
                 currentWinCondition = restoredState.currentWinCondition;
                 winConditionTarget = restoredState.winConditionTarget;
                 hasGameStartedPlaying = restoredState.hasGameStartedPlaying;
+                hasWonAndKeptPlaying = restoredState.hasWonAndKeptPlaying; 
+                hasLost = restoredState.hasLost; 
+                loseReasonText = restoredState.loseReasonText; 
+
+                if (hasWonAndKeptPlaying) {
+                    hudObjectiveInfo.classList.add('objective-completed');
+                } else {
+                    hudObjectiveInfo.classList.remove('objective-completed');
+                }
+                
+                if (hasLost) {
+                    showLoseModal(loseReasonText); // Re-show with correct reason
+                } else {
+                    loseModal.style.display = 'none';
+                }
 
                 for (let y = 0; y < MAP_SIZE; y++) {
                     for (let x = 0; x < MAP_SIZE; x++) {
@@ -1669,6 +1645,7 @@
             confirmEndTurnModal.style.display = 'none';
             optionsModal.style.display = 'none';
             winModal.style.display = 'none';
+            loseModal.style.display = 'none'; 
         }
 
         function showMessage(message, duration = 2000) {
@@ -1677,7 +1654,7 @@
             if (bracketIndex !== -1) {
                 displayMessage = message.substring(0, bracketIndex) + '<br>' + message.substring(bracketIndex);
             }
-            messageBox.innerHTML = displayMessage; // Use innerHTML for <br>
+            messageBox.innerHTML = displayMessage; 
             messageBox.style.display = 'block';
             setTimeout(() => {
                 messageBox.style.display = 'none';
@@ -1712,6 +1689,9 @@
                 currentWinCondition: currentWinCondition,
                 winConditionTarget: winConditionTarget,
                 hasGameStartedPlaying: hasGameStartedPlaying,
+                hasWonAndKeptPlaying: hasWonAndKeptPlaying, 
+                hasLost: hasLost, 
+                loseReasonText: loseReasonText, 
                 mapData: map.map(row => row.map(tile => ({
                     type: tile.type,
                     city: tile.city,
@@ -1827,7 +1807,7 @@
             if (interactionStartCoords && interactionStartTile) { 
                 const dist = Math.sqrt(
                     Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) + 
-                    Math.pow(currentPointerCoords.y - interactionPointerCoords.y, 2) 
+                    Math.pow(currentPointerCoords.y - interactionStartCoords.y, 2) 
                 );
                 if (dist > DRAG_THRESHOLD) {
                     isDragging = true;
@@ -2060,7 +2040,7 @@
                 } else if (unit.unitType === 'horseRider') {
                     unit.icon = '🐴';
                 } else if (unit.unitType === 'archer') {
-                    unit.icon = '🙆';
+                    unit.icon = '🙆'; 
                 }
             } else {
                 unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
@@ -2227,6 +2207,11 @@
         }
 
         function endTurn() {
+            if (hasWonAndKeptPlaying) { 
+                proceedEndTurn();
+                return;
+            }
+
             const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
             const unitsStillActive = playerUnits.filter(unit => (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
 
@@ -2285,6 +2270,9 @@
             if (checkWinCondition()) {
                 showWinModal();
                 nextLevelButton.style.display = 'inline-block'; 
+            } else if (checkLoseCondition()) { 
+                showLoseModal(loseReasonText); // Pass the reason to the modal
+                nextLevelButton.style.display = 'none'; 
             } else {
                 nextLevelButton.style.display = 'none'; 
             }
@@ -2370,10 +2358,9 @@
                 hasAttackedThisTurn: false,
                 justTrained: true,
                 kills: 0,
-                icon: unitDef.icon // Default icon
+                icon: unitDef.icon 
             };
 
-            // Apply swimming icon if applicable at training
             const isCityWater = (cityTile.type === 'water' || cityTile.type === 'river');
             if (techTree.swimming && isCityWater) {
                 if (newUnit.unitType === 'explorer') {
@@ -2394,133 +2381,390 @@
             updateAllUI();
         }
 
-        canvas.addEventListener('mousedown', handleInteractionStart);
-        canvas.addEventListener('mousemove', handleInteractionMove); 
-        canvas.addEventListener('mouseup', handleInteractionEnd);
-        canvas.addEventListener('touchstart', handleInteractionStart, { passive: false });
-        canvas.addEventListener('touchmove', handleInteractionMove, { passive: false }); 
-        canvas.addEventListener('touchend', handleInteractionEnd, { passive: false });
+        // Ensure DOM is fully loaded before attaching event listeners and initializing the game
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize DOM elements after they are loaded
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            hudTurnInfo = document.getElementById('turnInfo');
+            hudResourceInfo = document.getElementById('resourceInfo');
+            hudSelectedUnitInfo = document.getElementById('selectedUnitInfo');
+            hudObjectiveInfo = document.getElementById('objectiveInfo');
+            endTurnButton = document.getElementById('endTurnButton');
+            techTreeButton = document.getElementById('techTreeButton');
+            undoButton = document.getElementById('undoButton');
+            techTreeModal = document.getElementById('techTreeModal');
+            cityMenuModal = document.getElementById('cityMenuModal');
+            cityInteractionModal = document.getElementById('cityInteractionModal');
+            confirmEndTurnModal = document.getElementById('confirmEndTurnModal');
+            closeTechTreeButton = document.querySelector('.tech-tree-close');
+            closeCityMenuButton = document.querySelector('.city-menu-close'); 
+            confirmEndTurnYesButton = document.getElementById('confirmEndTurnYes');
+            confirmEndTurnNoButton = document.getElementById('confirmEndTurnNo');
+            dontAskAgainCheckbox = document.getElementById('dontAskAgainCheckbox'); 
+            buyMountainClimbingButton = document.getElementById('buyMountainClimbing');
+            buySwimmingButton = document.getElementById('buySwimming');
+            buyHorseRidingButton = document.getElementById('buyHorseRiding');
+            buyCarryingCapacity2Button = document.getElementById('buyCarryingCapacity2');
+            buyCarryingCapacity3Button = document.getElementById('buyCarryingCapacity3');
+            buyCarryingCapacity4Button = document.getElementById('buyCarryingCapacity4');
+            trainExplorerButton = document.getElementById('trainExplorerButton');
+            trainHorseRiderButton = document.getElementById('trainHorseRiderButton');
+            trainArcherButton = document.getElementById('trainArcherButton');
+            trainDefenderButton = document.getElementById('trainDefenderButton');
+            selectUnitFromCityButton = document.getElementById('selectUnitFromCity');
+            openCityMenuFromInteractionButton = document.getElementById('openCityMenuFromInteraction');
+            hudElement = document.getElementById('hud');
+            hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
+            optionsModal = document.getElementById('optionsModal');
+            closeOptionsButton = document.querySelector('.options-close');
+            giveUpButton = document.getElementById('giveUpButton'); 
+            saveLevelButton = document.getElementById('saveLevelButton');     
+            loadLevelButton = document.getElementById('loadLevelButton');     
+            saveInitialMapButton = document.getElementById('saveInitialMapButton');
+            loadInitialMapButton = document.getElementById('loadInitialMapButton');
+            techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
+            messageBox = document.getElementById('messageBox');
+            winModal = document.getElementById('winModal');
+            winModalNewGameButton = document.getElementById('winModalNewGameButton'); 
+            winModalKeepPlayingButton = document.getElementById('winModalKeepPlayingButton'); 
+            nextLevelButton = document.getElementById('nextLevelButton'); 
+            unitsWithMovesList = document.getElementById('unitsWithMovesList');
+            loseModal = document.getElementById('loseModal'); 
+            loseReasonDisplay = document.getElementById('loseReason');
+            loseModalNewGameButton = document.getElementById('loseModalNewGameButton'); 
+            loseModalKeepPlayingButton = document.getElementById('loseModalKeepPlayingButton');
 
-        endTurnButton.addEventListener('click', endTurn);
-        undoButton.addEventListener('click', undoLastAction);
-        techTreeButton.addEventListener('click', () => {
-            closeAllModals();
-            techTreeModal.style.display = 'flex';
-            updateAllUI();
-        });
+            carryingCapacity2Item = document.getElementById('carryingCapacity2Item');
+            carryingCapacity3Item = document.getElementById('carryingCapacity3Item');
+            carryingCapacity4Item = document.getElementById('carryingCapacity4Item');
 
-        closeTechTreeButton.addEventListener('click', () => {
-            closeAllModals();
-        });
-        closeCityMenuButton.addEventListener('click', () => {
-            closeAllModals();
-            selectedCity = null;
-        });
-        confirmEndTurnYesButton.addEventListener('click', () => {
-            proceedEndTurn();
-        });
-        confirmEndTurnNoButton.addEventListener('click', () => {
-            closeAllModals();
-        });
+            mountainClimbingCostSpan = document.getElementById('mountainClimbingCost');
+            swimmingCostSpan = document.getElementById('swimmingCost');
+            horseRidingCostSpan = document.getElementById('horseRidingCost');
+            carryingCapacity2CostSpan = document.getElementById('carryingCapacity2Cost');
+            carryingCapacity3CostSpan = document.getElementById('carryingCapacity3Cost');
+            carryingCapacity4CostSpan = document.getElementById('carryingCapacity4Cost');
+            explorerCostSpan = document.getElementById('explorerCost');
+            horseRiderCostSpan = document.getElementById('horseRiderCost');
+            archerCostSpan = document.getElementById('archerCost');
+            defenderCostSpan = document.getElementById('defenderCost');
+            archerTechCostSpan = document.getElementById('archerTechCost');
+            defenderTechCostSpan = document.getElementById('defenderTechCost');
 
-        dontAskAgainCheckbox.addEventListener('change', () => {
-            dontAskAgainForEndTurn = dontAskAgainCheckbox.checked;
-            localStorage.setItem('dontAskAgainEndTurn', dontAskAgainForEndTurn);
-        });
+            buyArcherTechButton = document.getElementById('buyArcherTech');
+            buyDefenderTechButton = document.getElementById('buyDefenderTech');
 
-        hamburgerMenuIcon.addEventListener('click', () => {
-            closeAllModals();
-            optionsModal.style.display = 'flex';
-        });
 
-        closeOptionsButton.addEventListener('click', () => {
-            closeAllModals();
-        });
+            canvas.addEventListener('mousedown', handleInteractionStart);
+            canvas.addEventListener('mousemove', handleInteractionMove); 
+            canvas.addEventListener('mouseup', handleInteractionEnd);
+            canvas.addEventListener('touchstart', handleInteractionStart, { passive: false });
+            canvas.addEventListener('touchmove', handleInteractionMove, { passive: false }); 
+            canvas.addEventListener('touchend', handleInteractionEnd, { passive: false });
 
-        giveUpButton.addEventListener('click', () => { 
-            closeAllModals();
-            initGameDefaults(); 
-            showMessage("You gave up! Starting a new level.");
-        });
-        saveLevelButton.addEventListener('click', saveGameState); 
-        loadLevelButton.addEventListener('click', () => importGameState()); 
-        saveInitialMapButton.addEventListener('click', saveInitialMap); 
-        loadInitialMapButton.addEventListener('click', () => loadInitialMap());
+            endTurnButton.addEventListener('click', endTurn);
+            undoButton.addEventListener('click', undoLastAction);
+            techTreeButton.addEventListener('click', () => {
+                closeAllModals();
+                techTreeModal.style.display = 'flex';
+                updateAllUI();
+            });
 
-        techTreeFromCityButton.addEventListener('click', () => {
-            closeAllModals();
-            techTreeModal.style.display = 'flex';
-            updateAllUI();
-        });
-
-        winModalNewGameButton.addEventListener('click', () => { 
-            closeAllModals();
-            initGame(); 
-        });
-
-        winModalKeepPlayingButton.addEventListener('click', () => { 
-            closeAllModals();
-            nextLevelButton.style.display = 'inline-block'; 
-        });
-
-        nextLevelButton.addEventListener('click', () => { 
-            initGameDefaults(); 
-        });
-
-        window.addEventListener('click', (event) => {
-            if (event.target === techTreeModal || event.target === cityMenuModal || event.target === cityInteractionModal || event.target === confirmEndTurnModal || event.target === optionsModal || event.target === winModal) {
+            closeTechTreeButton.addEventListener('click', () => {
+                closeAllModals();
+            });
+            closeCityMenuButton.addEventListener('click', () => {
                 closeAllModals();
                 selectedCity = null;
-            }
-        });
+            });
+            confirmEndTurnYesButton.addEventListener('click', () => {
+                proceedEndTurn();
+            });
+            confirmEndTurnNoButton.addEventListener('click', () => {
+                closeAllModals();
+            });
 
-        buyMountainClimbingButton.addEventListener('click', () => buyUpgrade('mountainClimbing'));
-        buySwimmingButton.addEventListener('click', () => buyUpgrade('swimming'));
-        buyHorseRidingButton.addEventListener('click', () => buyUpgrade('horseRiding'));
-        buyCarryingCapacity2Button.addEventListener('click', () => buyUpgrade('carryingCapacity2'));
-        buyCarryingCapacity3Button.addEventListener('click', () => buyUpgrade('carryingCapacity3'));
-        buyCarryingCapacity4Button.addEventListener('click', () => buyUpgrade('carryingCapacity4'));
-        buyArcherTechButton.addEventListener('click', () => buyUpgrade('archerTech'));
-        buyDefenderTechButton.addEventListener('click', () => buyUpgrade('defenderTech'));
+            dontAskAgainCheckbox.addEventListener('change', () => {
+                dontAskAgainForEndTurn = dontAskAgainCheckbox.checked;
+                localStorage.setItem('dontAskAgainEndTurn', dontAskAgainForEndTurn);
+            });
 
-        trainExplorerButton.addEventListener('click', () => trainUnit('explorer'));
-        trainHorseRiderButton.addEventListener('click', () => trainUnit('horseRider'));
-        trainArcherButton.addEventListener('click', () => trainUnit('archer'));
-        trainDefenderButton.addEventListener('click', () => trainUnit('defender'));
+            hamburgerMenuIcon.addEventListener('click', () => {
+                closeAllModals();
+                optionsModal.style.display = 'flex';
+            });
 
-        selectUnitFromCityButton.addEventListener('click', () => {
-            closeAllModals();
-            if (selectedCity && map[selectedCity.y][selectedCity.x].unit) {
-                saveStateForUndo();
-                selectUnit(map[selectedCity.y][selectedCity.x].unit);
-                updateHighlightTiles(selectedUnit); 
+            closeOptionsButton.addEventListener('click', () => {
+                closeAllModals();
+            });
+
+            giveUpButton.addEventListener('click', () => { 
+                closeAllModals();
+                initGameDefaults(); 
+                showMessage("You gave up! Starting a new level.");
+            });
+            saveLevelButton.addEventListener('click', saveGameState); 
+            loadLevelButton.addEventListener('click', () => importGameState()); 
+            saveInitialMapButton.addEventListener('click', saveInitialMap); 
+            loadInitialMapButton.addEventListener('click', () => loadInitialMap());
+
+            techTreeFromCityButton.addEventListener('click', () => {
+                closeAllModals();
+                techTreeModal.style.display = 'flex';
                 updateAllUI();
-            }
-            selectedCity = null;
+            });
+
+            winModalNewGameButton.addEventListener('click', () => { 
+                closeAllModals();
+                initGame(); 
+            });
+
+            winModalKeepPlayingButton.addEventListener('click', () => { 
+                closeAllModals();
+                hasWonAndKeptPlaying = true; 
+                hudObjectiveInfo.classList.add('objective-completed'); 
+                nextLevelButton.style.display = 'inline-block'; 
+                proceedEndTurn(); 
+            });
+
+            nextLevelButton.addEventListener('click', () => { 
+                initGameDefaults(); 
+            });
+
+            loseModalNewGameButton.addEventListener('click', () => {
+                closeAllModals();
+                initGame();
+            });
+
+            loseModalKeepPlayingButton.addEventListener('click', () => { 
+                closeAllModals();
+                hasLost = false; 
+                hasWonAndKeptPlaying = true; 
+                hudObjectiveInfo.classList.add('objective-completed'); 
+                nextLevelButton.style.display = 'inline-block'; 
+                proceedEndTurn(); 
+            });
+
+            window.addEventListener('click', (event) => {
+                if (event.target === techTreeModal || event.target === cityMenuModal || event.target === cityInteractionModal || event.target === confirmEndTurnModal || event.target === optionsModal || event.target === winModal || event.target === loseModal) {
+                    closeAllModals();
+                    selectedCity = null;
+                }
+            });
+
+            buyMountainClimbingButton.addEventListener('click', () => buyUpgrade('mountainClimbing'));
+            buySwimmingButton.addEventListener('click', () => buyUpgrade('swimming'));
+            buyHorseRidingButton.addEventListener('click', () => buyUpgrade('horseRiding'));
+            buyCarryingCapacity2Button.addEventListener('click', () => buyUpgrade('carryingCapacity2'));
+            buyCarryingCapacity3Button.addEventListener('click', () => buyUpgrade('carryingCapacity3'));
+            buyCarryingCapacity4Button.addEventListener('click', () => buyUpgrade('carryingCapacity4'));
+            buyArcherTechButton.addEventListener('click', () => buyUpgrade('archerTech'));
+            buyDefenderTechButton.addEventListener('click', () => buyUpgrade('defenderTech'));
+
+            trainExplorerButton.addEventListener('click', () => trainUnit('explorer'));
+            trainHorseRiderButton.addEventListener('click', () => trainUnit('horseRider'));
+            trainArcherButton.addEventListener('click', () => trainUnit('archer'));
+            trainDefenderButton.addEventListener('click', () => trainUnit('defender'));
+
+            selectUnitFromCityButton.addEventListener('click', () => {
+                closeAllModals();
+                if (selectedCity && map[selectedCity.y][selectedCity.x].unit) {
+                    saveStateForUndo();
+                    selectUnit(map[selectedCity.y][selectedCity.x].unit);
+                    updateHighlightTiles(selectedUnit); 
+                    updateAllUI();
+                }
+                selectedCity = null;
+            });
+
+            openCityMenuFromInteractionButton.addEventListener('click', () => {
+                closeAllModals();
+                if (selectedCity) {
+                    cityMenuModal.style.display = 'flex';
+                    updateAllUI();
+                }
+            });
+
+            initGame();
+
+            window.addEventListener('resize', () => {
+                const parentWidth = canvas.parentElement.clientWidth;
+                const parentHeight = canvas.parentElement.clientHeight;
+                const newSize = Math.min(parentWidth * 0.95, parentHeight * 0.75, MAP_SIZE * TILE_SIZE);
+                
+                canvas.style.width = `${newSize}px`;
+                canvas.style.height = `${newSize}px`;
+
+                hudElement.style.width = `${newSize}px`;
+                hudElement.style.maxWidth = `${newSize}px`;
+            });
+            window.dispatchEvent(new Event('resize'));
         });
-
-        openCityMenuFromInteractionButton.addEventListener('click', () => {
-            closeAllModals();
-            if (selectedCity) {
-                cityMenuModal.style.display = 'flex';
-                updateAllUI();
-            }
-        });
-
-        window.onload = initGame;
-
-        window.addEventListener('resize', () => {
-            const parentWidth = canvas.parentElement.clientWidth;
-            const parentHeight = canvas.parentElement.clientHeight;
-            const newSize = Math.min(parentWidth * 0.95, parentHeight * 0.75, MAP_SIZE * TILE_SIZE);
-            
-            canvas.style.width = `${newSize}px`;
-            canvas.style.height = `${newSize}px`;
-
-            hudElement.style.width = `${newSize}px`;
-            hudElement.style.maxWidth = `${newSize}px`;
-        });
-        window.dispatchEvent(new Event('resize'));
     </script>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+        <div id="hud-top-row">
+            <div id="turnInfo">Turn: 1</div>
+            <div id="resourceInfo">Stars: ★ 0</div>
+            <div id="objectiveInfo">Objective: </div>
+            <div class="button-group">
+                <button id="undoButton" class="game-button">Undo</button>
+                <button id="techTreeButton" class="game-button">Tech Tree</button>
+                <button id="nextLevelButton" class="game-button" style="display: none;">Next Level</button>
+                <button id="endTurnButton" class="game-button">End Turn</button>
+            </div>
+        </div>
+        <div id="hud-bottom-row">
+            <div id="selectedUnitInfo">Selected: None</div>
+        </div>
+    </div>
+
+    <div id="hamburger-menu-icon">☰</div>
+
+    <div id="optionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button options-close">&times;</span>
+            <h2>Options</h2>
+            <div class="item">
+                <button id="giveUpButton" class="game-button">Give Up</button>
+            </div>
+            <div class="item">
+                <button id="saveLevelButton" class="game-button">Save Current Game</button>
+            </div>
+            <div class="item">
+                <button id="loadLevelButton" class="game-button">Load Saved Game</button>
+            </div>
+            <div class="item">
+                <button id="saveInitialMapButton" class="game-button">Save Initial Map</button>
+            </div>
+            <div class="item">
+                <button id="loadInitialMapButton" class="game-button">Load Initial Map</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="techTreeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button tech-tree-close">&times;</span>
+            <h2>
+                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
+                City Actions 
+            </h2>
+            <div id="upgradesList">
+                <div class="item">
+                    <span>Mountain Climbing (Cost: <span id="mountainClimbingCost">1</span> Star)</span>
+                    <button id="buyMountainClimbing" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Swimming (Cost: <span id="swimmingCost">1</span> Star)</span>
+                    <button id="buySwimming" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Horse Riding (Cost: <span id="horseRidingCost">3</span> Stars)</span>
+                    <button id="buyHorseRiding" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Archery (Cost: <span id="archerTechCost">2</span> Stars)</span>
+                    <button id="buyArcherTech" class="game-button">Buy</button>
+                </div>
+                <div class="item">
+                    <span>Fortification (Cost: <span id="defenderTechCost">2</span> Stars)</span>
+                    <button id="buyDefenderTech" class="game-button">Buy</button>
+                </div>
+                <div class="item" id="carryingCapacity2Item">
+                    <span>Carrying Capacity Lvl 2 (Cost: <span id="carryingCapacity2Cost">1</span> Star)</span>
+                    <button id="buyCarryingCapacity2" class="game-button">Buy</button>
+                </div>
+                <div class="item" id="carryingCapacity3Item" style="display: none;">
+                    <span>Carrying Capacity Lvl 3 (Cost: <span id="carryingCapacity3Cost">2</span> Stars)</span>
+                    <button id="buyCarryingCapacity3" class="game-button">Buy</button>
+                </div>
+                <div class="item" id="carryingCapacity4Item" style="display: none;">
+                    <span>Carrying Capacity Lvl 4 (Cost: <span id="carryingCapacity4Cost">3</span> Stars)</span>
+                    <button id="buyCarryingCapacity4" class="game-button">Buy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cityMenuModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button city-menu-close">&times;</span>
+            <h2>
+                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
+                City Actions 
+            </h2>
+            <div id="cityActionsList">
+                <div class="item">
+                    <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
+                    <button id="trainExplorerButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Train Horse Rider (Cost: <span id="horseRiderCost">2</span> Stars)</span>
+                    <button id="trainHorseRiderButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Train Archer (Cost: <span id="archerCost">3</span> Stars)</span>
+                    <button id="trainArcherButton" class="game-button">Train</button>
+                </div>
+                <div class="item">
+                    <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
+                    <button id="trainDefenderButton" class="game-button">Train</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cityInteractionModal" class="modal">
+        <div class="modal-content">
+            <h2>What would you like to do?</h2>
+            <div class="button-group" style="justify-content: center;">
+                <button id="selectUnitFromCity" class="game-button">Select Unit</button>
+                <button id="openCityMenuFromInteraction" class="game-button">Open City Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmEndTurnModal" class="modal">
+        <div class="modal-content">
+            <h2>End Turn?</h2>
+            <p>Some units still have actions remaining. Are you sure you want to end your turn?</p>
+            <div id="unitsWithMovesList"></div>
+            <div class="checkbox-container">
+                <input type="checkbox" id="dontAskAgainCheckbox">
+                <label for="dontAskAgainCheckbox">Don't ask me again</label>
+            </div>
+            <div class="button-group" style="justify-content: center; margin-top: 20px;">
+                <button id="confirmEndTurnYes" class="game-button">Yes</button>
+                <button id="confirmEndTurnNo" class="game-button">No</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="messageBox"></div>
+
+    <div id="winModal" class="modal">
+        <div class="modal-content">
+            <p>YOU WIN!</p>
+            <div class="button-group">
+                <button id="winModalNewGameButton" class="game-button">New Game</button>
+                <button id="winModalKeepPlayingButton" class="game-button">Keep Playing</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loseModal" class="modal">
+        <div class="modal-content">
+            <p>GAME OVER!</p>
+            <p id="loseReason"></p> <!-- Added for the lose reason -->
+            <div class="button-group">
+                <button id="loseModalNewGameButton" class="game-button">New Game</button>
+                <button id="loseModalKeepPlayingButton" class="game-button">Keep Playing</button> <!-- Changed from Load Game -->
+            </div>
+        </div>
+    </div>
 </body>
 </html>
