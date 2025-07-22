@@ -3,2768 +3,698 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emojitopia</title>
+    <title>EmojiCut</title> <!-- Updated title here -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #222;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            background-color: #2c3e50; /* Dark blue background */
             font-family: 'Inter', sans-serif;
-            color: #eee;
-        }
-        canvas {
-            background-color: #333;
-            border: 2px solid #555;
-            display: block;
-            touch-action: none;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-            max-width: 95vw;
-            max-height: 80vh;
-            margin-bottom: 15px;
-        }
-        #hud {
-            background-color: #444;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #ecf0f1;
             flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            width: calc(100% - 40px);
-            gap: 10px;
-        }
-        #hud-top-row {
-            display: flex;
-            justify-content: space-between;
-            width: 100%;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        #hud-bottom-row {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-        }
-        #hud div {
-            padding: 5px 10px;
-            border-radius: 5px;
-            background-color: #555;
-            color: #fff;
-            font-size: 0.9em;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        #selectedUnitInfo {
-            min-width: 200px;
-            text-align: center;
-            justify-content: center;
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-        }
-        .game-button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9em;
-            font-weight: bold;
-            transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.3s ease;
-            box-shadow: 0 4px #388E3C;
-            outline: none;
-            white-space: nowrap;
-        }
-        .game-button:hover {
-            background-color: #45a049;
-        }
-        .game-button:active {
-            background-color: #3e8e41;
-            transform: translateY(2px);
-            box-shadow: 0 2px #388E3C;
-        }
-        .game-button:disabled {
-            background-color: #777;
-            box-shadow: 0 4px #555;
-            cursor: not-allowed;
-        }
-        .resource-icon {
-            font-size: 1.2em;
-            line-height: 1;
+            padding: 10px;
+            box-sizing: border-box;
         }
 
-        @keyframes pulse-outline {
-            0% { box-shadow: 0 4px #388E3C, 0 0 0 0px rgba(76, 175, 80, 0.7); }
-            50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
-            100% { box-shadow: 0 4px #388E3C, 0 0 0 0px rgba(76, 175, 80, 0.7); }
-        }
-        .end-turn-highlight {
-            animation: pulse-outline 1.5s infinite;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-content {
-            background-color: #555;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #888;
-            border-radius: 10px;
-            width: 80%;
-            max-width: 400px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            text-align: center;
-            color: #fff;
-        }
-        .modal-content h2 {
-            margin-top: 0;
-            color: #fff;
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            position: relative; 
-        }
-        .modal-content h2 #techTreeFromCityButton {
-            position: absolute; 
-            left: 0; 
-            margin-left: 0; 
-            padding: 5px 10px; 
-            font-size: 0.8em; 
-            box-shadow: none; 
-            background-color: #2196F3; 
-        }
-        .modal-content h2 #techTreeFromCityButton:hover {
-            background-color: #1e88e5;
-        }
-        .modal-content h2 #techTreeFromCityButton:active {
-            background-color: #1565C0;
+        #gameCanvas {
+            background-color: #34495e; /* Slightly lighter blue for canvas */
+            display: block;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            touch-action: none; /* Prevent browser default touch actions */
+            max-width: 95vw; /* Ensure it fits on smaller screens */
+            max-height: 80vh; /* Limit height */
+            border: 5px solid #2980b9; /* Border around the canvas */
         }
 
-        .modal-content .item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #666;
-        }
-        .modal-content .item:last-child {
-            border-bottom: none;
-        }
-        .modal-content .item span {
-            font-size: 1.1em;
-        }
-        .modal-content .item button {
-            background-color: #2196F3;
-            box-shadow: 0 4px #1976D2;
-        }
-        .modal-content .item button:hover {
-            background-color: #1e88e5;
-        }
-        .modal-content .item button:active {
-            background-color: #1565C0;
-            transform: translateY(2px);
-            box-shadow: 0 2px #1976D2;
-        }
-        .modal-content .item button:disabled {
-            background-color: #777;
-            box-shadow: 0 4px #555;
-            cursor: not-allowed;
-        }
-        .close-button {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .close-button:hover,
-        .close-button:focus {
-            color: #fff;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        #hamburger-menu-icon {
+        #gameInfo {
             position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 2em;
-            cursor: pointer;
-            color: #fff;
-            z-index: 10;
-            background-color: #444;
-            padding: 5px 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-
-        #optionsModal {
-            display: none;
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.6);
-            justify-content: center;
-            align-items: center;
-        }
-
-        #optionsModal .modal-content {
-            background-color: #555;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            text-align: center;
-            color: #fff;
-            max-width: 300px;
-        }
-        #optionsModal .modal-content .item button {
-            width: 100%;
-            margin-bottom: 10px;
-        }
-
-        #messageBox {
-            position: fixed;
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            display: none;
-            z-index: 1000;
-            white-space: normal; /* Changed from nowrap to normal */
+            display: flex;
+            gap: 30px;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ecf0f1;
+            z-index: 10;
         }
 
-        #winModal, #loseModal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
+        #gameOverScreen {
+            position: absolute;
             top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.7);
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
+            z-index: 100;
+            color: white;
+            font-size: 2em;
+            text-align: center;
+            border-radius: 15px;
         }
 
-        #winModal .modal-content {
-            background-color: #4CAF50;
-            border: 2px solid #388E3C;
-            color: white;
-            font-size: 1.5em;
+        #restartButton {
+            padding: 15px 30px;
+            font-size: 1.2em;
             font-weight: bold;
-            padding: 30px;
-            border-radius: 15px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-        #loseModal .modal-content {
-            background-color: #C62828; /* Dull red for lose */
-            border: 2px solid #B71C1C; /* Darker dull red */
+            background: linear-gradient(145deg, #27ae60, #2ecc71); /* Green gradient */
             color: white;
-            font-size: 1.5em;
-            font-weight: bold;
-            padding: 30px;
-            border-radius: 15px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-
-        #winModal .modal-content .button-group,
-        #loseModal .modal-content .button-group {
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
             margin-top: 20px;
-            justify-content: center;
         }
 
-        #unitsWithMovesList {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #666;
-            text-align: left;
-            font-size: 0.9em;
-        }
-        #unitsWithMovesList p {
-            margin: 5px 0;
+        #restartButton:hover {
+            background: linear-gradient(145deg, #2ecc71, #27ae60);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
-        #confirmEndTurnModal .modal-content .checkbox-container {
+        #restartButton:active {
+            transform: translateY(1px);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        #modeSelection {
+            margin-bottom: 20px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-top: 15px;
-            font-size: 0.9em;
+            gap: 15px;
+            z-index: 10;
         }
 
-        #confirmEndTurnModal .modal-content .checkbox-container input {
-            margin-right: 8px;
-            width: auto; 
-            height: auto; 
+        .mode-button {
+            padding: 10px 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+            background: linear-gradient(145deg, #3498db, #2980b9); /* Blue gradient */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
         }
 
-        .objective-completed {
-            text-decoration: line-through;
-            color: #aaffaa; /* Lighter green for completed objective */
+        .mode-button:hover {
+            background: linear-gradient(145deg, #2980b9, #3498db);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-button.active {
+            background: linear-gradient(145deg, #e67e22, #d35400); /* Orange gradient for active */
+            transform: translateY(0);
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #gameInfo {
+                font-size: 1.2em;
+                gap: 15px;
+                top: 10px;
+            }
+            #gameOverScreen {
+                font-size: 1.5em;
+            }
+            #restartButton {
+                padding: 12px 25px;
+                font-size: 1em;
+            }
+            .mode-button {
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            #modeSelection {
+                flex-direction: column;
+                gap: 10px;
+            }
         }
     </style>
-
-    <script>
-        // Declare variables globally but initialize them inside DOMContentLoaded
-        let canvas;
-        let ctx;
-        let hudTurnInfo;
-        let hudResourceInfo;
-        let hudSelectedUnitInfo;
-        let hudObjectiveInfo;
-        let endTurnButton;
-        let techTreeButton;
-        let undoButton;
-        let techTreeModal;
-        let cityMenuModal;
-        let cityInteractionModal;
-        let confirmEndTurnModal;
-        let closeTechTreeButton;
-        let closeCityMenuButton;
-        let confirmEndTurnYesButton;
-        let confirmEndTurnNoButton;
-        let dontAskAgainCheckbox;
-        let buyMountainClimbingButton;
-        let buySwimmingButton;
-        let buyHorseRidingButton;
-        let buyCarryingCapacity2Button;
-        let buyCarryingCapacity3Button;
-        let buyCarryingCapacity4Button;
-        let trainExplorerButton;
-        let trainHorseRiderButton;
-        let trainArcherButton;
-        let trainDefenderButton;
-        let selectUnitFromCityButton;
-        let openCityMenuFromInteractionButton;
-        let hudElement;
-        let hamburgerMenuIcon;
-        let optionsModal;
-        let closeOptionsButton;
-        let giveUpButton;
-        let saveLevelButton;
-        let loadLevelButton;
-        let saveInitialMapButton;
-        let loadInitialMapButton;
-        let techTreeFromCityButton;
-        let messageBox;
-        let winModal;
-        let winModalNewGameButton;
-        let winModalKeepPlayingButton;
-        let nextLevelButton;
-        let unitsWithMovesList;
-        let loseModal;
-        let loseReasonDisplay;
-        let loseModalNewGameButton;
-        let loseModalKeepPlayingButton;
-
-        let carryingCapacity2Item;
-        let carryingCapacity3Item;
-        let carryingCapacity4Item;
-
-        let mountainClimbingCostSpan;
-        let swimmingCostSpan;
-        let horseRidingCostSpan;
-        let carryingCapacity2CostSpan;
-        let carryingCapacity3CostSpan;
-        let carryingCapacity4CostSpan;
-        let explorerCostSpan;
-        let horseRiderCostSpan;
-        let archerCostSpan;
-        let defenderCostSpan;
-        let archerTechCostSpan;
-        let defenderTechCostSpan;
-
-        let buyArcherTechButton;
-        let buyDefenderTechButton;
-
-        const TILE_SIZE = 64;
-        const MAP_SIZE = 10;
-        const DRAG_THRESHOLD = 5; 
-        const UNIT_VISION_RANGE = 1; 
-        const MIN_RIVER_LENGTH = 3;
-
-        let map = [];
-        let units = [];
-        let cities = [];
-        let turnCount = 1;
-        let resources = { stars: 0 };
-        let selectedUnit = null;
-        let highlightTiles = [];
-        let activeAnimations = []; 
-
-        let interactionStartCoords = { x: 0, y: 0 };
-        let interactionStartTile = null;
-        let isDragging = false;
-        let currentPointerCoords = { x: 0, y: 0 };
-
-        let turnActions = [];
-        let selectedCity = null;
-
-        let currentWinCondition = null;
-        let winConditionTarget = 0;
-        let hasGameStartedPlaying = false; 
-        let hasWonAndKeptPlaying = false; 
-        let hasLost = false; 
-        let loseReasonText = ""; // Store the reason for losing
-
-        let nextUnitId = 1;
-        let dontAskAgainForEndTurn = localStorage.getItem('dontAskAgainEndTurn') === 'true'; 
-
-        const TERRAIN_COLORS = {
-            plains: '#7cb342',
-            forest: '#33691e',
-            mountain: '#616161',
-            water: '#2196f3',
-            river: '#42a5f5'
-        };
-
-        const TERRAIN_MOVE_COST = {
-            plains: 1,
-            forest: 2, 
-            mountain: 1,
-            water: 1,
-            river: 1
-        };
-
-        let techTree = {
-            mountainClimbing: false,
-            swimming: false,
-            horseRiding: false,
-            archerTech: false,
-            defenderTech: false,
-            carryingCapacityLevel: 1
-        };
-
-        const UPGRADES = {
-            mountainClimbing: { cost: 1, name: 'Mountain Climbing' },
-            swimming: { cost: 1, name: 'Swimming' },
-            horseRiding: { cost: 3, name: 'Horse Riding' },
-            archerTech: { cost: 2, name: 'Archery' },
-            defenderTech: { cost: 2, name: 'Fortification' },
-            carryingCapacity2: { cost: 1, name: 'Carrying Capacity Lvl 2', level: 2 },
-            carryingCapacity3: { cost: 2, name: 'Carrying Capacity Lvl 3', level: 3 }, 
-            carryingCapacity4: { cost: 3, name: 'Carrying Capacity Lvl 4', level: 4 }  
-        };
-
-        const UNIT_DEFINITIONS = {
-            explorer: { cost: 1, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '🚶' },
-            horseRider: { cost: 3, moves: 2, health: 1, attack: 1, defense: 0, range: 1, icon: '🏇' },
-            archer: { cost: 2, moves: 1, health: 1, attack: 1, defense: 0, range: 2, icon: '🙋' }, // Base icon for archer
-            defender: { cost: 2, moves: 1, health: 2, attack: 1, defense: 1, range: 1, icon: '🧑‍🍼' }, // Base icon for defender
-            enemy: { cost: 0, moves: 1, health: 1, attack: 1, defense: 0, range: 1, icon: '💀' }
-        };
-
-        const MOUNTAIN_EMOJIS = ['🗻', '⛰️', '🏔️'];
-
-        const WIN_CONDITIONS = [
-            { type: 'captureAllCities', text: 'Capture all enemy cities!' },
-            { type: 'reachStarTotal', text: 'Reach {target} stars!' },
-            { type: 'defeatAllEnemies', text: 'Defeat all enemy units!' }
-        ];
-
-        function initGame(initialMapState = null) {
-            canvas.width = MAP_SIZE * TILE_SIZE;
-            canvas.height = MAP_SIZE * TILE_SIZE;
-
-            winModal.style.display = 'none';
-            loseModal.style.display = 'none'; 
-            hasGameStartedPlaying = false; 
-            nextLevelButton.style.display = 'none'; 
-            hasWonAndKeptPlaying = false; 
-            hasLost = false; 
-            loseReasonText = ""; // Reset lose reason
-            hudObjectiveInfo.classList.remove('objective-completed'); 
-
-            if (typeof __initial_game_state !== 'undefined' && __initial_game_state) {
-                loadGameState(__initial_game_state);
-            } else if (initialMapState) {
-                initGameWithMap(initialMapState);
-            }
-            else {
-                initGameDefaults();
-            }
-            requestAnimationFrame(gameLoop); 
-        }
-
-        function initGameDefaults() {
-            winModal.style.display = 'none';
-            loseModal.style.display = 'none'; 
-            hasGameStartedPlaying = false; 
-            nextLevelButton.style.display = 'none'; 
-            hasWonAndKeptPlaying = false; 
-            hasLost = false; 
-            loseReasonText = ""; 
-            hudObjectiveInfo.classList.remove('objective-completed'); 
-
-            resources.stars = 2;
-            techTree = {
-                mountainClimbing: false,
-                swimming: false,
-                horseRiding: false,
-                archerTech: false,
-                defenderTech: false,
-                carryingCapacityLevel: 1
-            };
-
-            map = [];
-            units = [];
-            cities = [];
-            turnCount = 1;
-            selectedUnit = null;
-            highlightTiles = [];
-            turnActions = [];
-            nextUnitId = 1;
-
-            generateMap();
-            placeInitialElements();
-            placeEnemy(3);
-            selectWinCondition();
-
-            updateVisibility();
-            updateAllUI();
-            showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
-        }
-
-        function initGameWithMap(initialMapState) {
-            if (!initialMapState || !Array.isArray(initialMapState.mapData) || initialMapState.mapData.length === 0 ||
-                !Array.isArray(initialMapState.mapVisibility) || initialMapState.mapVisibility.length === 0 ||
-                !Array.isArray(initialMapState.cities)) {
-                showMessage("Error: Invalid map data format. Starting a new random game.");
-                initGameDefaults();
-                return;
-            }
-
-            for (let y = 0; y < MAP_SIZE; y++) {
-                if (!Array.isArray(initialMapState.mapData[y]) || initialMapState.mapData[y].length === 0 ||
-                    !Array.isArray(initialMapState.mapVisibility[y]) || initialMapState.mapVisibility[y].length === 0) {
-                    showMessage("Error: Malformed map data. Starting a new random game.");
-                    initGameDefaults();
-                    return;
-                }
-            }
-
-            winModal.style.display = 'none';
-            loseModal.style.display = 'none'; 
-            hasGameStartedPlaying = false;
-            nextLevelButton.style.display = 'none';
-            hasWonAndKeptPlaying = false; 
-            hasLost = false; 
-            loseReasonText = ""; 
-            hudObjectiveInfo.classList.remove('objective-completed'); 
-
-            resources.stars = 2;
-            techTree = {
-                mountainClimbing: false,
-                swimming: false,
-                horseRiding: false,
-                archerTech: false,
-                defenderTech: false,
-                carryingCapacityLevel: 1
-            };
-
-            map = initialMapState.mapData.map((row, y) => row.map((tileData, x) => ({
-                type: tileData.type,
-                maxVisibilityAchieved: initialMapState.mapVisibility[y][x],
-                city: tileData.city,
-                village: tileData.village,
-                resource: tileData.resource,
-                mountainEmoji: tileData.mountainEmoji || null,
-                unit: null
-            })));
-            cities = initialMapState.cities.map(city => ({ ...city }));
-
-            units = [];
-            turnCount = 1;
-            selectedUnit = null;
-            highlightTiles = [];
-            turnActions = [];
-            nextUnitId = 1;
-
-            const homeCity = cities.find(c => c.isHomeBase);
-            if (homeCity) {
-                const explorer = { 
-                    id: nextUnitId++,
-                    unitType: 'explorer', 
-                    x: homeCity.x, 
-                    y: homeCity.y, 
-                    movesRemaining: UNIT_DEFINITIONS.explorer.moves, 
-                    selected: false, 
-                    starsCarried: 0, 
-                    health: UNIT_DEFINITIONS.explorer.health, 
-                    maxHealth: UNIT_DEFINITIONS.explorer.health,
-                    attack: UNIT_DEFINITIONS.explorer.attack, 
-                    defense: UNIT_DEFINITIONS.explorer.defense,
-                    range: UNIT_DEFINITIONS.explorer.range,
-                    hasAttackedThisTurn: false, 
-                    justTrained: false,
-                    kills: 0,
-                    icon: UNIT_DEFINITIONS.explorer.icon
-                };
-                units.push(explorer);
-                map[homeCity.y][homeCity.x].unit = explorer;
-            } else {
-                placeInitialElements();
-            }
-
-            placeEnemy(3);
-
-            selectWinCondition();
-
-            updateVisibility();
-            updateAllUI();
-            showMessage("Initial map loaded successfully! New game started.");
-            setTimeout(() => {
-                showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
-            }, 2500);
-        }
-
-        function loadGameState(gameStateJson) {
-            try {
-                winModal.style.display = 'none';
-                loseModal.style.display = 'none'; 
-                hasGameStartedPlaying = false; 
-                nextLevelButton.style.display = 'none'; 
-                hasWonAndKeptPlaying = false; 
-                hasLost = false; 
-                loseReasonText = ""; 
-                hudObjectiveInfo.classList.remove('objective-completed'); 
-
-                const state = JSON.parse(gameStateJson);
-
-                map = state.mapData.map((row, y) => row.map((tileData, x) => ({
-                    type: tileData.type,
-                    maxVisibilityAchieved: state.mapVisibility[y][x], 
-                    city: tileData.city,
-                    village: tileData.village,
-                    resource: tileData.resource,
-                    mountainEmoji: tileData.mountainEmoji || null,
-                    unit: null 
-                })));
-
-                units = state.units.map(unit => ({ ...unit })); 
-
-                units.forEach(unit => {
-                    if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
-                        map[unit.y][unit.x].unit = unit; 
-                        const currentTile = map[unit.y][unit.x];
-                        const isCurrentTileWater = (currentTile.type === 'water' || currentTile.type === 'river');
-                        if (techTree.swimming && isCurrentTileWater) {
-                            if (unit.unitType === 'explorer') {
-                                unit.icon = '🏊';
-                            } else if (unit.unitType === 'horseRider') {
-                                unit.icon = '🐴';
-                            } else if (unit.unitType === 'archer') {
-                                unit.icon = '🙆';
-                            }
-                        } else {
-                            unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
-                        }
-                    } else {
-                        units = units.filter(u => u.id !== unit.id);
-                    }
-                });
-
-                cities = state.cities.map(city => ({ ...city })); 
-                resources = { ...state.resources };
-                techTree = { ...state.techTree };
-                turnCount = state.turnCount;
-                currentWinCondition = state.currentWinCondition;
-                winConditionTarget = state.winConditionTarget;
-                hasGameStartedPlaying = state.hasGameStartedPlaying; 
-                hasWonAndKeptPlaying = state.hasWonAndKeptPlaying || false; 
-                hasLost = state.hasLost || false; 
-                loseReasonText = state.loseReasonText || ""; 
-
-                if (hasWonAndKeptPlaying) {
-                    hudObjectiveInfo.classList.add('objective-completed');
-                } else if (hasLost) {
-                    showLoseModal(loseReasonText); // Pass the loaded reason
-                }
-
-                if (units.length > 0) {
-                    nextUnitId = Math.max(...units.map(u => u.id)) + 1;
-                } else {
-                    nextUnitId = 1;
-                }
-
-                selectedUnit = null;
-                if (state.selectedUnitId !== null) {
-                    selectedUnit = units.find(u => u.id === state.selectedUnitId);
-                    if (selectedUnit) {
-                        selectedUnit.selected = true;
-                        updateHighlightTiles(selectedUnit);
-                    }
-                }
-                
-                updateAllUI();
-                drawGame();
-                showMessage("Game state loaded successfully!");
-                setTimeout(() => {
-                    showMessage(`Objective: ${hudObjectiveInfo.textContent.replace('Objective: ', '')}`, 4000);
-                }, 2500);
-            } catch (e) {
-                showMessage("Failed to load game state. Invalid format or data. Starting a new game.");
-                initGameDefaults();
-            }
-        }
-
-        function selectWinCondition() {
-            const randomIndex = Math.floor(Math.random() * WIN_CONDITIONS.length);
-            currentWinCondition = WIN_CONDITIONS[randomIndex];
-
-            if (currentWinCondition.type === 'reachStarTotal') {
-                winConditionTarget = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
-                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text.replace('{target}', winConditionTarget)}`;
-            } else if (currentWinCondition.type === 'captureAllCities') {
-                winConditionTarget = map.flat().filter(tile => tile.village).length;
-                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text}`;
-            } else if (currentWinCondition.type === 'defeatAllEnemies') {
-                winConditionTarget = units.filter(unit => unit.unitType === 'enemy').length;
-                hudObjectiveInfo.textContent = `Objective: ${currentWinCondition.text}`;
-            }
-            hudObjectiveInfo.classList.remove('objective-completed'); 
-        }
-
-        function checkWinCondition() {
-            if (!hasGameStartedPlaying) return false;
-
-            switch (currentWinCondition.type) {
-                case 'captureAllCities':
-                    const remainingVillages = map.flat().filter(tile => tile.village).length;
-                    if (remainingVillages === 0) {
-                        return true;
-                    }
-                    break;
-                case 'reachStarTotal':
-                    if (resources.stars >= winConditionTarget) {
-                        return true;
-                    }
-                    break;
-                case 'defeatAllEnemies':
-                    const enemyUnits = units.filter(unit => unit.unitType === 'enemy');
-                    if (enemyUnits.length === 0) {
-                        return true;
-                    }
-                    break;
-            }
-            return false;
-        }
-
-        function showWinModal() {
-            winModal.style.display = 'flex';
-            hudObjectiveInfo.classList.add('objective-completed'); 
-        }
-
-        function showLoseModal(reason) {
-            loseReasonText = reason; // Set the reason
-            loseModal.style.display = 'flex';
-            
-            // Get the objective text, remove "Objective: " and punctuation
-            let objectiveCleanText = hudObjectiveInfo.textContent.replace('Objective: ', '');
-            objectiveCleanText = objectiveCleanText.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,""); // Remove common punctuation
-            objectiveCleanText = objectiveCleanText.replace(/\s{2,}/g," "); // Replace multiple spaces with single space
-
-            loseReasonDisplay.textContent = `Your current objective of ${objectiveCleanText} is no longer possible`;
-            hasLost = true; 
-        }
-
-        function checkLoseCondition() {
-            if (hasLost || hasWonAndKeptPlaying) return false; 
-
-            // Condition 1: No player units left
-            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
-            if (playerUnits.length === 0) {
-                showMessage("You have no units left!", 3000);
-                return true;
-            }
-
-            // Condition 2: No player cities left
-            if (cities.length === 0) {
-                showMessage("You have no cities left!", 3000);
-                return true;
-            }
-
-            // Condition 3: Cannot reach star objective (if applicable)
-            if (currentWinCondition.type === 'reachStarTotal') {
-                let starsOnMap = 0;
-                for (let y = 0; y < MAP_SIZE; y++) {
-                    for (let x = 0; x < MAP_SIZE; x++) {
-                        if (map[y][x].resource) {
-                            starsOnMap++;
-                        }
-                    }
-                }
-                const totalPotentialStars = resources.stars + starsOnMap;
-                if (totalPotentialStars < winConditionTarget) {
-                    showMessage(`Not enough stars left on the map to reach your objective (${totalPotentialStars}/${winConditionTarget})!`, 3000);
-                    return true;
-                }
-            }
-
-            return false; 
-        }
-
-        function generateMap() {
-            for (let y = 0; y < MAP_SIZE; y++) {
-                map[y] = [];
-                for (let x = 0; x < MAP_SIZE; x++) {
-                    let type = getRandomTerrainType();
-                    map[y][x] = {
-                        type: type,
-                        maxVisibilityAchieved: 0, 
-                        city: false,
-                        village: false,
-                        resource: null,
-                        mountainEmoji: null,
-                        unit: null,
-                    };
-                    if (map[y][x].type === 'mountain') {
-                        map[y][x].mountainEmoji = MOUNTAIN_EMOJIS[Math.floor(Math.random() * MOUNTAIN_EMOJIS.length)];
-                    }
-                }
-            }
-
-            for (let i = 0; i < 2; i++) {
-                let startX, startY;
-                do {
-                    startX = Math.floor(Math.random() * MAP_SIZE);
-                    startY = Math.floor(Math.random() * MAP_SIZE);
-                } while (map[startY][startX].type === 'mountain' || map[startY][startX].city || map[startY][startX].village || map[startY][startX].unit);
-                
-                generateRiverSegment(startX, startY, MIN_RIVER_LENGTH);
-            }
-
-            for (let i = 0; i < 5; i++) {
-                let rx, ry;
-                do {
-                    rx = Math.floor(Math.random() * MAP_SIZE);
-                    ry = Math.floor(Math.random() * MAP_SIZE);
-                } while (map[ry][rx].type === 'mountain' || map[ry][rx].type === 'water' || map[ry][rx].village);
-                map[ry][rx].village = true;
-            }
-
-            for (let i = 0; i < 25; i++) {
-                let rx, ry;
-                do {
-                    rx = Math.floor(Math.random() * MAP_SIZE);
-                    ry = Math.floor(Math.random() * MAP_SIZE);
-                } while (map[ry][rx].type === 'mountain' || map[ry][rx].type === 'water' || map[ry][rx].resource);
-                map[ry][rx].resource = true;
-            }
-        }
-
-        function generateRiverSegment(startX, startY, minLength) {
-            let currentX = startX;
-            let currentY = startY;
-            let length = 0;
-            let prevDx = 0;
-            let prevDy = 0;
-
-            while (length < minLength * 2) {
-                if (currentX < 0 || currentX >= MAP_SIZE || currentY < 0 || currentY >= MAP_SIZE) break;
-
-                if (map[currentY][currentX].type !== 'river' && !map[currentY][currentX].city && !map[currentY][currentX].village && !map[currentY][currentX].unit) {
-                    map[currentY][currentX].type = 'river';
-                    length++;
-                } else if (map[currentY][currentX].type === 'river') {
-                    length++;
-                } else {
-                    break;
-                }
-
-                let nextDx = prevDx;
-                let nextDy = prevDy;
-
-                if (length === 1 || (prevDx === 0 && prevDy === 0)) {
-                    const directions = [{dx: 0, dy: 1}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: -1, dy: 0}];
-                    const randDir = directions[Math.floor(Math.random() * directions.length)];
-                    nextDx = randDir.dx;
-                    nextDy = randDir.dy;
-                } else {
-                    const rand = Math.random();
-                    if (rand < 0.20) {
-                        [nextDx, nextDy] = [-prevDy, prevDx];
-                    } else if (rand < 0.40) {
-                        [nextDx, nextDy] = [prevDy, -prevDx];
-                    }
-                }
-
-                const newX = currentX + nextDx;
-                const newY = currentY + nextDy;
-
-                if (newX < 0 || newX >= MAP_SIZE || newY < 0 || newY >= MAP_SIZE || map[newY][newX].city || map[newY][newX].village) {
-                    const directions = [{dx: 0, dy: 1}, {dx: 1, dy: 0}, {dx: 0, dy: -1}, {dx: -1, dy: 0}];
-                    let foundValid = false;
-                    for (let i = 0; i < directions.length; i++) {
-                        const randDir = directions[Math.floor(Math.random() * directions.length)];
-                        const testX = currentX + randDir.dx;
-                        const testY = currentY + randDir.dy;
-                        if (testX >= 0 && testX < MAP_SIZE && testY >= 0 && testY < MAP_SIZE && !map[testY][testX].city && !map[testY][testX].village) {
-                            nextDx = randDir.dx;
-                            nextDy = randDir.dy;
-                            foundValid = true;
-                            break;
-                        }
-                    }
-                    if (!foundValid) break;
-                }
-                
-                currentX += nextDx;
-                currentY += nextDy;
-                prevDx = nextDx;
-                prevDy = nextDy;
-            }
-        }
-
-        function getRandomTerrainType() {
-            const rand = Math.random();
-            if (rand < 0.15) return 'forest';
-            if (rand < 0.25) return 'mountain';
-            if (rand < 0.35) return 'water';
-            if (rand < 0.45) return 'river';
-            return 'plains';
-        }
-
-        function placeInitialElements() {
-            let startX, startY;
-            do {
-                startX = Math.floor(Math.random() * MAP_SIZE);
-                startY = Math.floor(Math.random() * MAP_SIZE);
-            } while (map[startY][startX].type !== 'plains');
-
-            map[startY][startX].resource = false; 
-            map[startY][startX].city = true;
-            cities.push({ x: startX, y: startY, population: 1, isHomeBase: true });
-
-            const explorer = { 
-                id: nextUnitId++,
-                unitType: 'explorer', 
-                x: startX, 
-                y: startY, 
-                movesRemaining: UNIT_DEFINITIONS.explorer.moves, 
-                selected: false, 
-                starsCarried: 0, 
-                health: UNIT_DEFINITIONS.explorer.health, 
-                maxHealth: UNIT_DEFINITIONS.explorer.health,
-                attack: UNIT_DEFINITIONS.explorer.attack, 
-                defense: UNIT_DEFINITIONS.explorer.defense,
-                range: UNIT_DEFINITIONS.explorer.range,
-                hasAttackedThisTurn: false, 
-                justTrained: false,
-                kills: 0,
-                icon: UNIT_DEFINITIONS.explorer.icon
-            };
-            units.push(explorer);
-            map[startY][startX].unit = explorer;
-        }
-
-        function placeEnemy(count) {
-            for (let i = 0; i < count; i++) {
-                let ex, ey;
-                do {
-                    ex = Math.floor(Math.random() * MAP_SIZE);
-                    ey = Math.floor(Math.random() * MAP_SIZE);
-                } while (map[ey][ex].type === 'mountain' || map[ey][ex].type === 'water' || map[ey][ex].type === 'river' || map[ey][ex].city || map[ey][ex].village || map[ey][ex].unit);
-                
-                const enemy = { 
-                    id: nextUnitId++,
-                    unitType: 'enemy', 
-                    x: ex, 
-                    y: ey, 
-                    movesRemaining: UNIT_DEFINITIONS.enemy.moves, 
-                    selected: false, 
-                    starsCarried: 0, 
-                    health: UNIT_DEFINITIONS.enemy.health, 
-                    maxHealth: UNIT_DEFINITIONS.enemy.health,
-                    attack: UNIT_DEFINITIONS.enemy.attack, 
-                    defense: UNIT_DEFINITIONS.enemy.defense,
-                    range: UNIT_DEFINITIONS.enemy.range,
-                    hasAttackedThisTurn: false,
-                    kills: 0,
-                    icon: UNIT_DEFINITIONS.enemy.icon
-                };
-                units.push(enemy);
-                map[ey][ex].unit = enemy;
-            }
-        }
-
-        function drawStaticElements(x, y, screenX, screenY, tile) {
-            const isHomeBaseTile = cities.some(city => city.x === x && city.y === y && city.isHomeBase);
-            ctx.font = `${TILE_SIZE * 0.5}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            if (tile.city) {
-                ctx.fillStyle = '#fff';
-                if (isHomeBaseTile) {
-                    ctx.fillText('🏠', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1);
-                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
-                    ctx.fillText('👑', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1);
-                    ctx.font = `${TILE_SIZE * 0.5}px Arial`;
-                } else {
-                    ctx.fillText('🏠', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
-                }
-            } else if (tile.village) {
-                ctx.fillStyle = '#fff';
-                ctx.fillText('🛖', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
-            }
-            if (tile.resource && !tile.city) { 
-                ctx.fillStyle = '#FFD700';
-                ctx.fillText('★', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + (tile.village ? TILE_SIZE * 0.2 : 0));
-            }
-            if (tile.type === 'mountain' && tile.mountainEmoji) {
-                ctx.fillStyle = '#fff';
-                ctx.fillText(tile.mountainEmoji, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2);
-            }
-        }
-
-        function drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear) {
-            if (tile.unit && !(isDragging && selectedUnit && selectedUnit.x === x && selectedUnit.y === y)) {
-                if (tile.unit.unitType === 'enemy' && !isCurrentlyClear && tile.maxVisibilityAchieved === 0) {
-                    return; 
-                }
-                
-                ctx.fillStyle = '#fff';
-                const unitIcon = tile.unit.icon; 
-                ctx.font = `${TILE_SIZE * 0.4}px Arial`; 
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(unitIcon, screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); 
-                
-                if (tile.unit.unitType === 'archer') {
-                    ctx.save();
-                    ctx.globalAlpha = 1; 
-                    ctx.font = `${TILE_SIZE * 0.75}px Arial`; 
-                    ctx.fillText('🏹', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 + TILE_SIZE * 0.1); 
-                    ctx.restore();
-                }
-
-                if (tile.unit.unitType === 'defender') {
-                    ctx.save();
-                    ctx.globalAlpha = 1; 
-                    ctx.font = `${TILE_SIZE * 0.5}px Arial`; 
-                    ctx.fillText('🛡️', screenX + TILE_SIZE / 2, screenY + TILE_SIZE / 2 - TILE_SIZE * 0.1); 
-                    ctx.restore();
-                }
-
-                if (tile.unit.unitType !== 'enemy' && !tile.unit.selected && canUnitAttack(tile.unit) && !tile.unit.justTrained) { 
-                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-                } else if (tile.unit.unitType !== 'enemy' && tile.unit.movesRemaining > 0 && !tile.unit.selected && !tile.unit.justTrained) {
-                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)'; 
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-                }
-                if (tile.unit.selected) {
-                    ctx.strokeStyle = '#FFFF00';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4);
-                }
-                if (tile.unit.starsCarried > 0) {
-                    ctx.save(); 
-                    ctx.textBaseline = 'alphabetic'; 
-
-                    const countText = String(tile.unit.starsCarried);
-                    const starText = '★';
-
-                    ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
-                    const countMetrics = ctx.measureText(countText);
-                    const countWidth = countMetrics.width;
-
-                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
-                    const starMetrics = ctx.measureText(starText);
-                    const starWidth = starMetrics.width;
-
-                    const totalWidth = countWidth + starWidth + 2; 
-                    const startXPos = screenX + TILE_SIZE - totalWidth - 3; 
-
-                    ctx.font = `${TILE_SIZE * 0.25}px Arial`; 
-                    ctx.fillStyle = '#fff';
-                    ctx.textAlign = 'left'; 
-                    ctx.fillText(countText, startXPos, screenY + TILE_SIZE - 3); 
-                    
-                    ctx.font = `${TILE_SIZE * 0.3}px Arial`;
-                    ctx.fillStyle = '#FFD700';
-                    ctx.textAlign = 'left'; 
-                    ctx.fillText(starText, startXPos + countWidth + 2, screenY + TILE_SIZE - 3); 
-
-                    ctx.restore(); 
-                }
-                ctx.font = `${TILE_SIZE * 0.25}px Arial`;
-                ctx.fillStyle = '#FF0000'; 
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                ctx.fillText(`HP: ${tile.unit.health}/${tile.unit.maxHealth}`, screenX + 3, screenY + 3);
-                ctx.textAlign = 'center'; 
-                ctx.textBaseline = 'middle';
-            }
-        }
-
-        function drawTile(x, y, currentFrameVisibleTiles) {
-            const tile = map[y][x];
-            const screenX = x * TILE_SIZE;
-            const screenY = y * TILE_SIZE;
-
-            ctx.font = `${TILE_SIZE * 0.5}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            const isCurrentlyClear = currentFrameVisibleTiles.has(`${x},${y}`);
-
-            if (isCurrentlyClear) {
-                ctx.fillStyle = TERRAIN_COLORS[tile.type];
-                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-
-                drawStaticElements(x, y, screenX, screenY, tile);
-                drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear);
-            } 
-            else if (tile.maxVisibilityAchieved >= 1) { 
-                ctx.fillStyle = TERRAIN_COLORS[tile.type];
-                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-
-                drawStaticElements(x, y, screenX, screenY, tile);
-                
-                if (tile.unit && tile.unit.unitType === 'enemy') {
-                    drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear); 
-                }
-                else if (tile.unit && tile.unit.unitType !== 'enemy') {
-                    drawUnit(x, y, screenX, screenY, tile, isCurrentlyClear);
-                }
-
-                if (tile.maxVisibilityAchieved === 1) { 
-                    ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
-                    ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                    
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)'; 
-                    for (let i = 0; i < TILE_SIZE; i += 8) {
-                        for (let j = 0; j < TILE_SIZE; j += 8) {
-                            if ((i + j) % 16 === 0) {
-                                ctx.fillRect(screenX + i, screenY + j, 1, 1);
-                            }
-                        }
-                    }
-                }
-            }
-            else { 
-                ctx.fillStyle = 'rgba(50, 50, 50, 0.9)';
-                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'; 
-                for (let i = 0; i < TILE_SIZE; i += 4) {
-                    for (let j = 0; j < TILE_SIZE; j += 4) {
-                        if ((i + j) % 8 === 0) {
-                            ctx.fillRect(screenX + i, screenY + j, 1, 1);
-                        }
-                    }
-                }
-            }
-        }
-
-        function gameLoop() {
-            drawGame();
-            requestAnimationFrame(gameLoop);
-        }
-
-        function drawGame() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const currentFrameVisibleTiles = new Set();
-            units.forEach(unit => {
-                if (unit.unitType !== 'enemy') {
-                    for (let dy = -UNIT_VISION_RANGE; dy <= UNIT_VISION_RANGE; dy++) {
-                        for (let dx = -UNIT_VISION_RANGE; dx <= UNIT_VISION_RANGE; dx++) {
-                            const nx = unit.x + dx;
-                            const ny = unit.y + dy;
-                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                                currentFrameVisibleTiles.add(`${nx},${ny}`);
-                            }
-                        }
-                    }
-                }
-            });
-
-            for (let y = 0; y < MAP_SIZE; y++) {
-                for (let x = 0; x < MAP_SIZE; x++) {
-                    drawTile(x, y, currentFrameVisibleTiles);
-                }
-            }
-            highlightTiles.forEach(p => {
-                const screenX = p.x * TILE_SIZE;
-                const screenY = p.y * TILE_SIZE;
-                if (p.type === 'move') {
-                    ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
-                    ctx.strokeStyle = '#00FF00';
-                } else if (p.type === 'attack') {
-                    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)'; 
-                    ctx.strokeStyle = '#FF0000';
-                }
-                ctx.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-                ctx.lineWidth = 2;
-                ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
-            });
-
-            if (isDragging && selectedUnit) {
-                const drawX = currentPointerCoords.x - TILE_SIZE / 2;
-                const drawY = currentPointerCoords.y - TILE_SIZE / 2;
-
-                ctx.save();
-                ctx.globalAlpha = 0.7;
-                ctx.fillStyle = '#fff';
-                const unitIcon = selectedUnit.icon; 
-                ctx.font = `${TILE_SIZE * 0.5}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(unitIcon, drawX + TILE_SIZE / 2, drawY + TILE_SIZE / 2);
-                ctx.restore();
-            }
-
-            const now = performance.now();
-            activeAnimations = activeAnimations.filter(anim => {
-                const elapsed = now - anim.startTime;
-                if (elapsed < anim.duration) {
-                    const screenX = anim.x * TILE_SIZE;
-                    const screenY = anim.y * TILE_SIZE; 
-                    let displayY = screenY;
-
-                    ctx.save(); 
-
-                    if (anim.type === 'sleepy') {
-                        displayY = screenY - TILE_SIZE * 0.75 * (elapsed / anim.duration); 
-                        
-                        const fadeStartRatio = 0.7; 
-                        let alpha = 1;
-                        if (elapsed / anim.duration > fadeStartRatio) {
-                            alpha = 1 - ((elapsed / anim.duration - fadeStartRatio) / (1 - fadeStartRatio));
-                        }
-                        ctx.globalAlpha = alpha;
-                        ctx.fillStyle = '#FFFFFF'; 
-                        ctx.font = `${TILE_SIZE * 0.8}px Arial, "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Apple Color Emoji", sans-serif`; 
-                    } else { 
-                        const alpha = 1 - (elapsed / anim.duration);
-                        ctx.globalAlpha = alpha; 
-                        ctx.fillStyle = '#fff'; 
-                        ctx.font = `${TILE_SIZE * 0.8}px Arial, "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Apple Color Emoji", sans-serif`;
-                    }
-
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(anim.icon, screenX + TILE_SIZE / 2, displayY + TILE_SIZE / 2);
-                    ctx.restore(); 
-                    return true;
-                }
-                return false;
-            });
-        }
-
-        function updateHUD() {
-            hudTurnInfo.textContent = `Turn: ${turnCount}`;
-            hudResourceInfo.innerHTML = `Stars: <span class="resource-icon">★</span> ${resources.stars}`;
-            if (currentWinCondition) {
-                let objectiveText = currentWinCondition.text;
-                if (currentWinCondition.type === 'reachStarTotal') {
-                    objectiveText = objectiveText.replace('{target}', winConditionTarget);
-                }
-                hudObjectiveInfo.textContent = `Objective: ${objectiveText}`;
-                if (hasWonAndKeptPlaying) {
-                    hudObjectiveInfo.classList.add('objective-completed');
-                } else {
-                    hudObjectiveInfo.classList.remove('objective-completed');
-                }
-            }
-
-            if (selectedUnit) {
-                let unitStatus = `${selectedUnit.unitType} (`;
-                if (selectedUnit.justTrained) {
-                    unitStatus += `New unit, cannot move this turn)`;
-                } else {
-                    unitStatus += `${selectedUnit.movesRemaining} moves`;
-                    if (selectedUnit.hasAttackedThisTurn) {
-                        unitStatus += `, attacked`;
-                    } else if (canUnitAttack(selectedUnit)) {
-                        unitStatus += `, can attack`;
-                    }
-                    unitStatus += `)`;
-                }
-
-                if (selectedUnit.starsCarried > 0) {
-                    unitStatus += ` (Carrying ★ ${selectedUnit.starsCarried})`;
-                }
-                if (selectedUnit.unitType !== 'enemy') {
-                    unitStatus += ` | HP: ${selectedUnit.health}/${selectedUnit.maxHealth}`;
-                    if (selectedUnit.defense > 0) {
-                        unitStatus += ` | Def: ${selectedUnit.defense}`;
-                    }
-                    if (selectedUnit.kills > 0) {
-                        unitStatus += ` | Kills: ${selectedUnit.kills}`;
-                    }
-                }
-                hudSelectedUnitInfo.textContent = `Selected: ${unitStatus}`;
-            } else {
-                hudSelectedUnitInfo.textContent = 'Selected: None';
-            }
-
-            const anyUnitHasMoves = units.some(unit => unit.unitType !== 'enemy' && (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
-            if (anyUnitHasMoves) {
-                endTurnButton.classList.remove('end-turn-highlight');
-            } else {
-                endTurnButton.classList.add('end-turn-highlight');
-            }
-
-            undoButton.disabled = turnActions.length === 0;
-        }
-
-        function updateCostDisplays() {
-            mountainClimbingCostSpan.textContent = UPGRADES.mountainClimbing.cost;
-            swimmingCostSpan.textContent = UPGRADES.swimming.cost;
-            horseRidingCostSpan.textContent = UPGRADES.horseRiding.cost;
-            carryingCapacity2CostSpan.textContent = UPGRADES.carryingCapacity2.cost;
-            carryingCapacity3CostSpan.textContent = UPGRADES.carryingCapacity3.cost;
-            carryingCapacity4CostSpan.textContent = UPGRADES.carryingCapacity4.cost;
-            explorerCostSpan.textContent = UNIT_DEFINITIONS.explorer.cost;
-            horseRiderCostSpan.textContent = UNIT_DEFINITIONS.horseRider.cost;
-            archerCostSpan.textContent = UNIT_DEFINITIONS.archer.cost;
-            defenderCostSpan.textContent = UNIT_DEFINITIONS.defender.cost;
-            archerTechCostSpan.textContent = UPGRADES.archerTech.cost;
-            defenderTechCostSpan.textContent = UPGRADES.defenderTech.cost;
-        }
-
-        function updateTechTreeButtons() {
-            buyMountainClimbingButton.disabled = techTree.mountainClimbing || resources.stars < UPGRADES.mountainClimbing.cost;
-            if (techTree.mountainClimbing) buyMountainClimbingButton.textContent = 'Unlocked!';
-            else buyMountainClimbingButton.textContent = 'Buy';
-
-            buySwimmingButton.disabled = techTree.swimming || resources.stars < UPGRADES.swimming.cost;
-            if (techTree.swimming) buySwimmingButton.textContent = 'Unlocked!';
-            else buySwimmingButton.textContent = 'Buy';
-
-            buyHorseRidingButton.disabled = techTree.horseRiding || resources.stars < UPGRADES.horseRiding.cost;
-            if (techTree.horseRiding) buyHorseRidingButton.textContent = 'Unlocked!';
-            else buyHorseRidingButton.textContent = 'Buy';
-
-            carryingCapacity2Item.style.display = 'flex';
-            carryingCapacity3Item.style.display = 'none';
-            carryingCapacity4Item.style.display = 'none';
-
-            if (techTree.carryingCapacityLevel < 2) {
-                buyCarryingCapacity2Button.disabled = resources.stars < UPGRADES.carryingCapacity2.cost;
-                buyCarryingCapacity2Button.textContent = 'Buy';
-            } else if (techTree.carryingCapacityLevel === 2) {
-                buyCarryingCapacity2Button.textContent = 'Unlocked!';
-                buyCarryingCapacity2Button.disabled = true;
-                carryingCapacity3Item.style.display = 'flex';
-                buyCarryingCapacity3Button.disabled = resources.stars < UPGRADES.carryingCapacity3.cost;
-                buyCarryingCapacity3Button.textContent = 'Next Level';
-            } else if (techTree.carryingCapacityLevel === 3) {
-                buyCarryingCapacity2Button.textContent = 'Unlocked!';
-                buyCarryingCapacity2Button.disabled = true;
-                buyCarryingCapacity3Button.textContent = 'Unlocked!';
-                buyCarryingCapacity3Button.disabled = true;
-                carryingCapacity3Item.style.display = 'flex';
-                carryingCapacity4Item.style.display = 'flex';
-                buyCarryingCapacity4Button.disabled = resources.stars < UPGRADES.carryingCapacity4.cost;
-                buyCarryingCapacity4Button.textContent = 'Next Level';
-            } else if (techTree.carryingCapacityLevel >= 4) {
-                buyCarryingCapacity2Button.textContent = 'Unlocked!';
-                buyCarryingCapacity2Button.disabled = true;
-                buyCarryingCapacity3Button.textContent = 'Unlocked!';
-                buyCarryingCapacity3Button.disabled = true;
-                buyCarryingCapacity4Button.textContent = 'Unlocked!';
-                buyCarryingCapacity4Button.disabled = true;
-                carryingCapacity3Item.style.display = 'flex';
-                carryingCapacity4Item.style.display = 'flex';
-            }
-        }
-
-        function updateCityMenuButtons() {
-            const cityTile = selectedCity ? map[selectedCity.y][selectedCity.x] : null;
-            const isCityOccupied = cityTile && cityTile.unit;
-
-            trainExplorerButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.explorer.cost;
-            trainHorseRiderButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.horseRider.cost || !techTree.horseRiding;
-            trainArcherButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.archer.cost || !techTree.archerTech;
-            trainDefenderButton.disabled = isCityOccupied || resources.stars < UNIT_DEFINITIONS.defender.cost || !techTree.defenderTech;
-
-            trainHorseRiderButton.parentElement.style.display = techTree.horseRiding ? 'flex' : 'none';
-            trainArcherButton.parentElement.style.display = techTree.archerTech ? 'flex' : 'none';
-            trainDefenderButton.parentElement.style.display = techTree.defenderTech ? 'flex' : 'none';
-        }
-
-        function updateAllUI() {
-            updateHUD();
-            updateTechTreeButtons();
-            updateCityMenuButtons();
-            updateCostDisplays();
-        }
-
-        function getTileCoords(event) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            
-            let clientX, clientY;
-            if (event.changedTouches && event.changedTouches.length > 0) {
-                clientX = event.changedTouches[0].clientX;
-                clientY = event.changedTouches[0].clientY;
-            } else if (event.touches && event.touches.length > 0) {
-                clientX = event.touches[0].clientX;
-                clientY = event.touches[0].clientY;
-            } else {
-                clientX = event.clientX;
-                clientY = event.clientY;
-            }
-
-            const canvasX = (clientX - rect.left) * scaleX;
-            const canvasY = (clientY - rect.top) * scaleY;
-            const tileX = Math.floor(canvasX / TILE_SIZE);
-            const tileY = Math.floor(canvasY / TILE_SIZE);
-            return { tileX, tileY, canvasX, canvasY };
-        }
-
-        function getMovementCost(tileType, unitType) {
-            if (tileType === 'mountain' && !techTree.mountainClimbing) return Infinity;
-            if ((tileType === 'water' || tileType === 'river') && !techTree.swimming) return Infinity;
-            
-            if (tileType === 'forest') {
-                if (unitType === 'archer') {
-                    return 1; 
-                } else {
-                    return Infinity;
-                }
-            }
-            
-            return TERRAIN_MOVE_COST[tileType];
-        }
-
-        function getValidMoveTiles(unit) {
-            if (unit.justTrained) return [];
-
-            const reachableTiles = new Map(); 
-            const queue = [{ x: unit.x, y: unit.y, cost: 0 }];
-            const visited = new Set(); 
-
-            reachableTiles.set(`${unit.x},${unit.y}`, 0);
-            visited.add(`${unit.x},${unit.y}`);
-
-            let head = 0;
-            while(head < queue.length) {
-                const { x, y, cost } = queue[head++];
-
-                const neighbors = [
-                    {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-                    {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-                    {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
-                ];
-
-                for (const {dx, dy} of neighbors) {
-                    const nx = x + dx;
-                    const ny = y + dy;
-
-                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                        const neighborTile = map[ny][nx];
-                        const moveCost = getMovementCost(neighborTile.type, unit.unitType);
-
-                        if (moveCost === Infinity) continue;
-
-                        const newCost = cost + moveCost;
-
-                        if (newCost <= unit.movesRemaining) {
-                            const key = `${nx},${ny}`;
-                            if (neighborTile.unit && neighborTile.unit.id !== unit.id) {
-                                continue;
-                            }
-                            
-                            if (!visited.has(key) || newCost < reachableTiles.get(key)) {
-                                reachableTiles.set(key, newCost);
-                                visited.add(key);
-                                queue.push({ x: nx, y: ny, cost: newCost });
-                            }
-                        }
-                    }
-                }
-            }
-            
-            const validMoves = [];
-            for (const [key, cost] of reachableTiles.entries()) {
-                const [x, y] = key.split(',').map(Number);
-                if (x === unit.x && y === unit.y) continue;
-                validMoves.push({ x, y, cost });
-            }
-            return validMoves;
-        }
-
-        function getValidAttackTiles(unit) {
-            const attackTiles = [];
-            if (unit.hasAttackedThisTurn || unit.unitType === 'enemy') {
-                return attackTiles;
-            }
-
-            const unitRange = UNIT_DEFINITIONS[unit.unitType].range;
-
-            for (let dy = -unitRange; dy <= unitRange; dy++) {
-                for (let dx = -unitRange; dx <= unitRange; dx++) {
-                    if (dx === 0 && dy === 0) continue;
-                    if (Math.abs(dx) > unitRange || Math.abs(dy) > unitRange) continue;
-
-                    const nx = unit.x + dx;
-                    const ny = unit.y + dy;
-
-                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                        const targetTile = map[ny][nx];
-                        if (targetTile.unit && targetTile.unit.unitType === 'enemy') {
-                            attackTiles.push({ x: nx, y: ny });
-                        }
-                    }
-                }
-            }
-            return attackTiles;
-        }
-
-        function canUnitAttack(unit) {
-            return getValidAttackTiles(unit).length > 0;
-        }
-
-        function saveStateForUndo() {
-            const state = {
-                units: JSON.parse(JSON.stringify(units)),
-                cities: JSON.parse(JSON.stringify(cities)),
-                resources: { ...resources },
-                techTree: JSON.parse(JSON.stringify(techTree)),
-                turnCount: turnCount,
-                currentWinCondition: currentWinCondition,
-                winConditionTarget: winConditionTarget,
-                hasGameStartedPlaying: hasGameStartedPlaying,
-                hasWonAndKeptPlaying: hasWonAndKeptPlaying, 
-                hasLost: hasLost, 
-                loseReasonText: loseReasonText, 
-                mapData: map.map(row => row.map(tile => ({
-                    type: tile.type,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource,
-                    mountainEmoji: tile.mountainEmoji 
-                }))),
-                mapVisibility: map.map(row => row.map(tile => tile.maxVisibilityAchieved)),
-                selectedUnitId: selectedUnit ? selectedUnit.id : null,
-            };
-            turnActions.push(state);
-        }
-
-        function undoLastAction() {
-            if (turnActions.length > 0) {
-                const restoredState = turnActions.pop();
-                
-                units = restoredState.units;
-                cities = restoredState.cities;
-                resources = restoredState.resources;
-                techTree = restoredState.techTree;
-                turnCount = restoredState.turnCount;
-                currentWinCondition = restoredState.currentWinCondition;
-                winConditionTarget = restoredState.winConditionTarget;
-                hasGameStartedPlaying = restoredState.hasGameStartedPlaying;
-                hasWonAndKeptPlaying = restoredState.hasWonAndKeptPlaying; 
-                hasLost = restoredState.hasLost; 
-                loseReasonText = restoredState.loseReasonText; 
-
-                if (hasWonAndKeptPlaying) {
-                    hudObjectiveInfo.classList.add('objective-completed');
-                } else {
-                    hudObjectiveInfo.classList.remove('objective-completed');
-                }
-                
-                if (hasLost) {
-                    showLoseModal(loseReasonText); // Re-show with correct reason
-                } else {
-                    loseModal.style.display = 'none';
-                }
-
-                for (let y = 0; y < MAP_SIZE; y++) {
-                    for (let x = 0; x < MAP_SIZE; x++) {
-                        map[y][x].unit = null; 
-                        map[y][x].type = restoredState.mapData[y][x].type; 
-                        map[y][x].city = restoredState.mapData[y][x].city; 
-                        map[y][x].village = restoredState.mapData[y][x].village; 
-                        map[y][x].resource = restoredState.mapData[y][x].resource; 
-                        map[y][x].mountainEmoji = restoredState.mapData[y][x].mountainEmoji; 
-                        map[y][x].maxVisibilityAchieved = restoredState.mapVisibility[y][x]; 
-                    }
-                }
-                
-                units.forEach(unit => {
-                    if (unit.x >= 0 && unit.x < MAP_SIZE && unit.y >= 0 && unit.y < MAP_SIZE) {
-                        map[unit.y][unit.x].unit = unit;
-                    }
-                });
-
-                selectedUnit = null;
-                if (restoredState.selectedUnitId !== null) {
-                    selectedUnit = units.find(u => u.id === restoredState.selectedUnitId);
-                    if (selectedUnit) {
-                        selectedUnit.selected = true;
-                        updateHighlightTiles(selectedUnit);
-                    }
-                }
-                updateAllUI();
-                drawGame();
-            }
-        }
-
-        function closeAllModals() {
-            techTreeModal.style.display = 'none';
-            cityMenuModal.style.display = 'none';
-            cityInteractionModal.style.display = 'none';
-            confirmEndTurnModal.style.display = 'none';
-            optionsModal.style.display = 'none';
-            winModal.style.display = 'none';
-            loseModal.style.display = 'none'; 
-        }
-
-        function showMessage(message, duration = 2000) {
-            let displayMessage = message;
-            const bracketIndex = message.indexOf('(');
-            if (bracketIndex !== -1) {
-                displayMessage = message.substring(0, bracketIndex) + '<br>' + message.substring(bracketIndex);
-            }
-            messageBox.innerHTML = displayMessage; 
-            messageBox.style.display = 'block';
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, duration);
-        }
-
-        function saveGameState() { 
-            const gameState = {
-                units: units.map(unit => ({ 
-                    id: unit.id,
-                    unitType: unit.unitType,
-                    x: unit.x,
-                    y: unit.y,
-                    movesRemaining: unit.movesRemaining,
-                    selected: unit.selected, 
-                    starsCarried: unit.starsCarried,
-                    health: unit.health,
-                    maxHealth: unit.maxHealth,
-                    attack: unit.attack,
-                    defense: unit.defense,
-                    range: unit.range,
-                    hasAttackedThisTurn: unit.hasAttackedThisTurn,
-                    justTrained: unit.justTrained,
-                    kills: unit.kills,
-                    icon: unit.icon
-                })),
-                cities: cities, 
-                turnCount: turnCount,
-                resources: { ...resources },
-                techTree: { ...techTree },
-                selectedUnitId: selectedUnit ? selectedUnit.id : null,
-                currentWinCondition: currentWinCondition,
-                winConditionTarget: winConditionTarget,
-                hasGameStartedPlaying: hasGameStartedPlaying,
-                hasWonAndKeptPlaying: hasWonAndKeptPlaying, 
-                hasLost: hasLost, 
-                loseReasonText: loseReasonText, 
-                mapData: map.map(row => row.map(tile => ({
-                    type: tile.type,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource,
-                    mountainEmoji: tile.mountainEmoji 
-                }))),
-                mapVisibility: map.map(row => row.map(tile => tile.maxVisibilityAchieved))
-            };
-
-            const jsonString = JSON.stringify(gameState, null, 2);
-
-            const textarea = document.createElement('textarea');
-            textarea.value = jsonString;
-            textarea.style.position = 'fixed';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showMessage("Game state copied to clipboard!");
-            } catch (err) {
-                showMessage("Failed to copy game state.");
-            }
-            document.body.removeChild(textarea);
-        }
-
-        function importGameState() { 
-            const jsonInput = prompt("Paste your saved game state JSON here:");
-            if (jsonInput === null) {
-                showMessage("Load cancelled.");
-                return;
-            }
-            if (jsonInput.trim() === "") {
-                showMessage("Invalid input. Load cancelled.");
-                return;
-            }
-
-            try {
-                loadGameState(jsonInput);
-            } catch (e) {
-                showMessage("Failed to load game state. Invalid format or data.");
-            }
-        }
-
-        function saveInitialMap() {
-            const initialMapState = {
-                mapData: map.map(row => row.map(tile => ({
-                    type: tile.type,
-                    city: tile.city,
-                    village: tile.village,
-                    resource: tile.resource,
-                    mountainEmoji: tile.mountainEmoji 
-                }))),
-                mapVisibility: map.map(row => row.map(tile => 0)),
-                cities: cities.map(city => ({ ...city }))
-            };
-
-            const jsonString = JSON.stringify(initialMapState, null, 2);
-
-            const textarea = document.createElement('textarea');
-            textarea.value = jsonString;
-            textarea.style.position = 'fixed';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                showMessage("Initial map state copied to clipboard!");
-            } catch (err) {
-                showMessage("Failed to copy initial map state.");
-            }
-            document.body.removeChild(textarea);
-        }
-
-        function loadInitialMap() {
-            const jsonInput = prompt("Paste your initial map state JSON here:");
-            if (jsonInput === null) {
-                showMessage("Load cancelled.");
-                return;
-            }
-            if (jsonInput.trim() === "") {
-                showMessage("Invalid input. Load cancelled.");
-                return;
-            }
-
-            try {
-                const initialMapState = JSON.parse(jsonInput);
-                if (!initialMapState.mapData || !initialMapState.mapVisibility || !initialMapState.cities) {
-                    throw new Error("Missing required map data in JSON.");
-                }
-                initGame(initialMapState);
-            } catch (e) {
-                showMessage("Failed to load initial map. Invalid format or data.");
-            }
-        }
-
-        function handleInteractionStart(event) {
-            event.preventDefault();
-            const { tileX, tileY, canvasX, canvasY } = getTileCoords(event);
-            interactionStartCoords = { x: canvasX, y: canvasY };
-            interactionStartTile = { x: tileX, y: tileY }; 
-            isDragging = false; 
-            closeAllModals();
-            updateAllUI(); 
-        }
-
-        function handleInteractionMove(event) {
-            event.preventDefault(); 
-            const { canvasX, canvasY } = getTileCoords(event);
-            currentPointerCoords = { x: canvasX, y: canvasY };
-
-            if (interactionStartCoords && interactionStartTile) { 
-                const dist = Math.sqrt(
-                    Math.pow(currentPointerCoords.x - interactionStartCoords.x, 2) + 
-                    Math.pow(currentPointerCoords.y - interactionStartCoords.y, 2) 
-                );
-                if (dist > DRAG_THRESHOLD) {
-                    isDragging = true;
-                    if (!selectedUnit) {
-                        const unitOnStartTile = map[interactionStartTile.y]?.[interactionStartTile.x]?.unit;
-                        if (unitOnStartTile && unitOnStartTile.unitType !== 'enemy' && (unitOnStartTile.movesRemaining > 0 || canUnitAttack(unitOnStartTile)) && !unitOnStartTile.justTrained) {
-                            selectUnit(unitOnStartTile);
-                            updateHighlightTiles(selectedUnit);
-                        }
-                    }
-                }
-            }
-        }
-
-        function handleInteractionEnd(event) {
-            event.preventDefault();
-
-            const { tileX, tileY } = getTileCoords(event);
-            let targetTileCoords = { x: tileX, y: tileY };
-
-            const tileAtTarget = map[targetTileCoords.y]?.[targetTileCoords.x];
-            if (!tileAtTarget) {
-                deselectUnit(); 
-                closeAllModals();
-                updateAllUI();
-                resetInteractionState();
-                return;
-            }
-
-            const unitOnTargetTile = tileAtTarget.unit; 
-            const cityOnTargetTile = cities.find(c => c.x === targetTileCoords.x && c.y === targetTileCoords.y);
-
-            let actionCompleted = false;
-
-            if (selectedUnit) {
-                const clickedHighlight = highlightTiles.find(p => p.x === targetTileCoords.x && p.y === targetTileCoords.y);
-
-                if (clickedHighlight && clickedHighlight.type === 'attack') {
-                    if (unitOnTargetTile && unitOnTargetTile.unitType === 'enemy' && !selectedUnit.hasAttackedThisTurn) {
-                        saveStateForUndo();
-                        handleCombat(selectedUnit, unitOnTargetTile, targetTileCoords.x, targetTileCoords.y);
-                        actionCompleted = true;
-                    }
-                } else if (clickedHighlight && clickedHighlight.type === 'move') {
-                    if (!unitOnTargetTile) { 
-                        saveStateForUndo();
-                        moveUnit(selectedUnit, targetTileCoords.x, targetTileCoords.y);
-                        selectedUnit.movesRemaining -= clickedHighlight.cost; 
-                        actionCompleted = true;
-                    }
-                } else if (cityOnTargetTile) { 
-                    selectedCity = cityOnTargetTile;
-                    closeAllModals();
-                    cityMenuModal.style.display = 'flex';
-                    updateAllUI();
-                    actionCompleted = true;
-                    deselectUnit(); 
-                } else { 
-                    deselectUnit();
-                    actionCompleted = true;
-                }
-            } 
-            else if (unitOnTargetTile && unitOnTargetTile.unitType !== 'enemy') {
-                const unitIsTired = (unitOnTargetTile.movesRemaining === 0 && !canUnitAttack(unitOnTargetTile) && !unitOnTargetTile.justTrained);
-
-                if (!unitIsTired) {
-                    saveStateForUndo();
-                    selectUnit(unitOnTargetTile); 
-                    updateHighlightTiles(unitOnTargetTile); 
-                    actionCompleted = true;
-                } else {
-                    activeAnimations.push({ type: 'sleepy', x: unitOnTargetTile.x, y: unitOnTargetTile.y, icon: '😴', startTime: performance.now(), duration: 2000 });
-                    deselectUnit();
-                    actionCompleted = true;
-                }
-            }
-            else if (cityOnTargetTile) {
-                selectedCity = cityOnTargetTile;
-                closeAllModals();
-                cityMenuModal.style.display = 'flex';
-                updateAllUI();
-                actionCompleted = true;
-            }
-            else {
-                const tileType = tileAtTarget.type;
-                if (tileType !== 'plains') {
-                    let message = `Tile: ${tileType}`;
-
-                    if (tileType === 'mountain' && !techTree.mountainClimbing) {
-                        message += ` (Requires Mountain Climbing tech)`;
-                    } else if ((tileType === 'water' || tileType === 'river') && !techTree.swimming) {
-                        message += ` (Requires Swimming tech)`;
-                    } else if (tileType === 'forest') {
-                        message += ` (Only Archers can move through forests)`;
-                    }
-                    showMessage(message);
-                }
-                deselectUnit();
-                actionCompleted = true;
-            }
-
-            if (selectedUnit) {
-                if (selectedUnit.movesRemaining > 0 || canUnitAttack(selectedUnit)) {
-                    updateHighlightTiles(selectedUnit);
-                } else {
-                    deselectUnit();
-                }
-            } else if (!actionCompleted) { 
-                deselectUnit();
-            }
-            
-            resetInteractionState();
-            updateAllUI();
-        }
-
-        function handleCombat(attacker, defender, targetX, targetY) {
-            saveStateForUndo();
-
-            const attackerOriginalX = attacker.x;
-            const attackerOriginalY = attacker.y;
-
-            activeAnimations.push({ type: 'combat', x: targetX, y: targetY, icon: '💥', startTime: performance.now(), duration: 500 });
-
-            const damageDealt = Math.max(1, attacker.attack - defender.defense);
-            defender.health -= damageDealt;
-            attacker.hasAttackedThisTurn = true; 
-
-            attacker.movesRemaining = 0;
-
-            if (defender.health > 0) { 
-                const counterDamage = Math.max(1, defender.attack - attacker.defense);
-                attacker.health -= counterDamage;
-            }
-
-            if (defender.health <= 0) {
-                map[defender.y][defender.x].unit = null;
-                units = units.filter(u => u.id !== defender.id);
-                
-                if (attacker.unitType !== 'enemy') {
-                    attacker.kills++;
-                    if (attacker.kills >= 2) { 
-                        attacker.maxHealth++;
-                        attacker.health = attacker.maxHealth;
-                        attacker.kills = 0;
-                        showMessage(`${attacker.unitType} leveled up! Max HP: ${attacker.maxHealth}`);
-                    }
-                }
-
-                if (attacker.unitType !== 'archer') {
-                    const targetTileType = map[targetY][targetX].type;
-                    const moveCostToTarget = getMovementCost(targetTileType, attacker.unitType);
-
-                    if (moveCostToTarget !== Infinity) { 
-                        moveUnit(attacker, targetX, targetY); 
-                    } else {
-                        map[attackerOriginalY][attackerOriginalX].unit = attacker;
-                        attacker.x = attackerOriginalX;
-                        attacker.y = attackerOriginalY;
-                    }
-                } else {
-                    map[attackerOriginalY][attackerOriginalX].unit = attacker;
-                    attacker.x = attackerOriginalX;
-                    attacker.y = attackerOriginalY;
-                }
-
-                if (attacker.health <= 0) {
-                    map[attacker.y][attacker.x].unit = null;
-                    units = units.filter(u => u.id !== attacker.id);
-                    deselectUnit();
-                }
-            } else if (attacker.health <= 0) {
-                map[attacker.y][attacker.x].unit = null;
-                units = units.filter(u => u.id !== attacker.id);
-                deselectUnit();
-            }
-        }
-
-        function updateHighlightTiles(unit) {
-            highlightTiles = []; 
-
-            if (unit && !unit.justTrained && unit.movesRemaining > 0) {
-                const moveTiles = getValidMoveTiles(unit); 
-                moveTiles.forEach(p => highlightTiles.push({ x: p.x, y: p.y, type: 'move', cost: p.cost })); 
-            }
-
-            if (unit && !unit.hasAttackedThisTurn) {
-                const attackTiles = getValidAttackTiles(unit);
-                attackTiles.forEach(p => {
-                    const isAlreadyMoveHighlight = highlightTiles.some(h => h.x === p.x && h.y === p.y && h.type === 'move');
-                    if (!isAlreadyMoveHighlight) { 
-                        highlightTiles.push({ x: p.x, y: p.y, type: 'attack' });
-                    }
-                });
-            }
-        }
-
-        function selectUnit(unit) {
-            if (unit.justTrained) {
-                hudSelectedUnitInfo.textContent = 'Selected: New unit, cannot move this turn.';
-                return;
-            }
-            if (selectedUnit) {
-                selectedUnit.selected = false;
-            }
-            selectedUnit = unit;
-            selectedUnit.selected = true;
-        }
-
-        function deselectUnit() {
-            if (selectedUnit) {
-                selectedUnit.selected = false;
-                selectedUnit = null;
-                highlightTiles = [];
-            }
-        }
-
-        function moveUnit(unit, newX, newY) {
-            const oldTile = map[unit.y][unit.x];
-            const newTile = map[newY][newX];
-
-            map[unit.y][unit.x].unit = null;
-            unit.x = newX;
-            unit.y = newY;
-            map[newY][newX].unit = unit;
-
-            const isNewTileWater = (newTile.type === 'water' || newTile.type === 'river');
-            if (techTree.swimming && isNewTileWater) {
-                if (unit.unitType === 'explorer') {
-                    unit.icon = '🏊';
-                } else if (unit.unitType === 'horseRider') {
-                    unit.icon = '🐴';
-                } else if (unit.unitType === 'archer') {
-                    unit.icon = '🙆'; 
-                }
-            } else {
-                unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
-            }
-
-            updateVisibility();
-
-            const maxCapacity = techTree.carryingCapacityLevel;
-
-            if (newTile.resource) {
-                if (newTile.village && unit.starsCarried === maxCapacity) {
-                    unit.starsCarried++;
-                    newTile.resource = false;
-                    activeAnimations.push({ type: 'resource', x: newX, y: newY, icon: '✨', startTime: performance.now(), duration: 700 });
-                } else if (unit.starsCarried < maxCapacity) {
-                    unit.starsCarried++;
-                    newTile.resource = false;
-                    activeAnimations.push({ type: 'resource', x: newX, y: newY, icon: '✨', startTime: performance.now(), duration: 700 });
-                }
-            }
-
-            if (newTile.village) {
-                newTile.village = false;
-                newTile.city = true;
-                if (!cities.some(c => c.x === newX && c.y === newY)) {
-                    cities.push({ x: newX, y: newY, population: 1, isHomeBase: false });
-                }
-            }
-
-            if (newTile.city && unit.starsCarried > 0) {
-                resources.stars += unit.starsCarried;
-                unit.starsCarried = 0;
-            }
-        }
-
-        function updateVisibility() {
-            const currentTurnClearVisionTiles = new Set(); 
-
-            units.forEach(unit => {
-                if (unit.unitType !== 'enemy') { 
-                    const visionRange = UNIT_VISION_RANGE;
-                    for (let dy = -visionRange; dy <= visionRange; dy++) {
-                        for (let dx = -visionRange; dx <= visionRange; dx++) {
-                            const nx = unit.x + dx;
-                            const ny = unit.y + dy;
-                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                                currentTurnClearVisionTiles.add(`${nx},${ny}`);
-                                map[ny][nx].maxVisibilityAchieved = Math.max(map[ny][nx].maxVisibilityAchieved, 2);
-                            }
-                        }
-                    }
-                }
-            });
-
-            for (let y = 0; y < MAP_SIZE; y++) {
-                for (let x = 0; x < MAP_SIZE; x++) {
-                    if (currentTurnClearVisionTiles.has(`${x},${y}`)) { 
-                        const neighbors = [
-                            {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-                            {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-                            {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
-                        ];
-                        for (const {dx, dy} of neighbors) {
-                            const nx = x + dx;
-                            const ny = y + dy;
-                            if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                                if (!currentTurnClearVisionTiles.has(`${nx},${ny}`)) {
-                                    map[ny][nx].maxVisibilityAchieved = Math.max(map[ny][nx].maxVisibilityAchieved, 1);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        function enemyTurn() {
-            const enemyUnits = units.filter(unit => unit.unitType === 'enemy');
-            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
-
-            const currentTurnClearVisionTiles = new Set();
-            playerUnits.forEach(unit => {
-                for (let dy = -UNIT_VISION_RANGE; dy <= UNIT_VISION_RANGE; dy++) {
-                    for (let dx = -UNIT_VISION_RANGE; dx <= UNIT_VISION_RANGE; dx++) {
-                        const nx = unit.x + dx;
-                        const ny = unit.y + dy;
-                        if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                            currentTurnClearVisionTiles.add(`${nx},${ny}`);
-                        }
-                    }
-                }
-            });
-
-            enemyUnits.forEach(enemy => {
-                const oldX = enemy.x;
-                const oldY = enemy.y;
-                let acted = false;
-
-                const neighbors = [
-                    {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1},
-                    {dx: -1, dy: 0},                   {dx: 1, dy: 0},
-                    {dx: -1, dy: 1}, {dx: 0, dy: 1}, {dx: 1, dy: 1}
-                ];
-
-                const adjacentPlayerUnits = [];
-                for (const {dx, dy} of neighbors) {
-                    const nx = enemy.x + dx;
-                    const ny = enemy.y + dy;
-
-                    if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                        const targetTile = map[ny][nx];
-                        if (targetTile.unit && targetTile.unit.unitType !== 'enemy') {
-                            adjacentPlayerUnits.push(targetTile.unit);
-                        }
-                    }
-                }
-
-                if (adjacentPlayerUnits.length > 0) {
-                    const targetUnit = adjacentPlayerUnits[Math.floor(Math.random() * adjacentPlayerUnits.length)];
-                    handleCombat(enemy, targetUnit, targetUnit.x, targetUnit.y);
-                    acted = true;
-                } 
-                
-                if (!acted) {
-                    const possibleMoves = [];
-                    for (const {dx, dy} of neighbors) {
-                        const nx = enemy.x + dx;
-                        const ny = enemy.y + dy;
-
-                        if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
-                            const targetTile = map[ny][nx];
-                            if (!targetTile.unit && getMovementCost(targetTile.type, enemy.unitType) !== Infinity) {
-                                possibleMoves.push({x: nx, y: ny});
-                            }
-                        }
-                    }
-
-                    if (possibleMoves.length > 0) {
-                        const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                        
-                        const wasVisibleOnMap = map[oldY][oldX].maxVisibilityAchieved >= 1; 
-
-                        map[enemy.y][enemy.x].unit = null;
-                        enemy.x = randomMove.x;
-                        enemy.y = randomMove.y;
-                        map[enemy.y][enemy.x].unit = enemy;
-                        acted = true;
-
-                        const isNowInUnexploredFog = map[enemy.y][enemy.x].maxVisibilityAchieved === 0;
-
-                        if (wasVisibleOnMap && isNowInUnexploredFog) {
-                            activeAnimations.push({ type: 'poof', x: enemy.x, y: enemy.y, icon: '💨', startTime: performance.now(), duration: 700 });
-                        }
-                    }
-                }
-            });
-            updateVisibility();
-        }
-
-        function resetInteractionState() {
-            isDragging = false;
-            interactionStartCoords = null;
-            interactionStartTile = null;
-        }
-
-        function endTurn() {
-            if (hasWonAndKeptPlaying) { 
-                proceedEndTurn();
-                return;
-            }
-
-            const playerUnits = units.filter(unit => unit.unitType !== 'enemy');
-            const unitsStillActive = playerUnits.filter(unit => (unit.movesRemaining > 0 || canUnitAttack(unit)) && !unit.justTrained);
-
-            if (dontAskAgainForEndTurn || unitsStillActive.length === 0) {
-                proceedEndTurn();
-            } else {
-                closeAllModals();
-                unitsWithMovesList.innerHTML = '';
-                unitsStillActive.forEach(unit => {
-                    const listItem = document.createElement('p');
-                    let status = '';
-                    if (unit.movesRemaining > 0) status += `${unit.movesRemaining} moves left`;
-                    if (canUnitAttack(unit)) {
-                        if (status) status += ', ';
-                        status += 'can attack';
-                    }
-                    listItem.textContent = `- ${unit.unitType} at (${unit.x}, ${unit.y}): ${status}`;
-                    unitsWithMovesList.appendChild(listItem);
-                });
-                dontAskAgainCheckbox.checked = dontAskAgainForEndTurn; 
-                confirmEndTurnModal.style.display = 'flex';
-            }
-        }
-
-        function proceedEndTurn() {
-            turnCount++;
-            units.forEach(unit => {
-                if (unit.unitType !== 'enemy') {
-                    unit.movesRemaining = UNIT_DEFINITIONS[unit.unitType].moves;
-                    unit.hasAttackedThisTurn = false; 
-                    unit.justTrained = false; 
-                    
-                    const currentTile = map[unit.y][unit.x];
-                    const isCurrentTileWater = (currentTile.type === 'water' || currentTile.type === 'river');
-
-                    if (techTree.swimming && isCurrentTileWater) {
-                        if (unit.unitType === 'explorer') {
-                            unit.icon = '🏊';
-                        } else if (unit.unitType === 'horseRider') {
-                            unit.icon = '🐴';
-                        } else if (unit.unitType === 'archer') {
-                            unit.icon = '🙆';
-                        }
-                    } else {
-                        unit.icon = UNIT_DEFINITIONS[unit.unitType].icon;
-                    }
-                }
-            });
-            deselectUnit();
-            turnActions = [];
-            enemyTurn();
-            hasGameStartedPlaying = true; 
-            updateAllUI();
-            closeAllModals();
-
-            if (checkWinCondition()) {
-                showWinModal();
-                nextLevelButton.style.display = 'inline-block'; 
-            } else if (checkLoseCondition()) { 
-                showLoseModal(loseReasonText); // Pass the reason to the modal
-                nextLevelButton.style.display = 'none'; 
-            } else {
-                nextLevelButton.style.display = 'none'; 
-            }
-        }
-
-        function buyUpgrade(upgradeType) {
-            const upgrade = UPGRADES[upgradeType];
-
-            if (resources.stars >= upgrade.cost) {
-                if (upgradeType.startsWith('carryingCapacity')) {
-                    const level = upgrade.level;
-                    if (techTree.carryingCapacityLevel < level) {
-                        saveStateForUndo();
-                        resources.stars -= upgrade.cost;
-                        techTree.carryingCapacityLevel = level;
-                        
-                        units.forEach(unit => {
-                            const tile = map[unit.y][unit.x];
-                            if (tile.resource && unit.starsCarried < techTree.carryingCapacityLevel) {
-                                unit.starsCarried++;
-                                tile.resource = false;
-                            }
-                        });
-
-                    } else {
-                        updateAllUI();
-                        return;
-                    }
-                } else if (!techTree[upgradeType]) {
-                    saveStateForUndo();
-                    resources.stars -= upgrade.cost;
-                    techTree[upgradeType] = true;
-
-                } else {
-                    updateAllUI();
-                    return;
-                }
-
-                updateAllUI();
-            } else {
-            }
-        }
-
-        function trainUnit(unitType) {
-            const unitDef = UNIT_DEFINITIONS[unitType];
-            const cost = unitDef.cost;
-            const cityTile = selectedCity ? map[selectedCity.y][selectedCity.x] : null;
-
-            if (!cityTile) {
-                return;
-            }
-            if (cityTile.unit) {
-                return;
-            }
-            if (resources.stars < cost) {
-                return;
-            }
-            if (unitType === 'horseRider' && !techTree.horseRiding) {
-                return;
-            }
-            if (unitType === 'archer' && !techTree.archerTech) {
-                return;
-            }
-            if (unitType === 'defender' && !techTree.defenderTech) {
-                return;
-            }
-
-            saveStateForUndo();
-            resources.stars -= cost;
-            const newUnit = {
-                id: nextUnitId++,
-                unitType: unitType,
-                x: selectedCity.x,
-                y: selectedCity.y,
-                movesRemaining: unitDef.moves,
-                selected: false,
-                starsCarried: 0,
-                health: unitDef.health,
-                maxHealth: unitDef.health,
-                attack: unitDef.attack,
-                defense: unitDef.defense,
-                range: unitDef.range,
-                hasAttackedThisTurn: false,
-                justTrained: true,
-                kills: 0,
-                icon: unitDef.icon 
-            };
-
-            const isCityWater = (cityTile.type === 'water' || cityTile.type === 'river');
-            if (techTree.swimming && isCityWater) {
-                if (newUnit.unitType === 'explorer') {
-                    newUnit.icon = '🏊';
-                } else if (newUnit.unitType === 'horseRider') {
-                    newUnit.icon = '🐴';
-                } else if (newUnit.unitType === 'archer') {
-                    newUnit.icon = '🙆';
-                }
-            }
-
-            units.push(newUnit);
-            map[selectedCity.y][selectedCity.x].unit = newUnit;
-
-            updateVisibility(); 
-            closeAllModals();
-            selectedCity = null;
-            updateAllUI();
-        }
-
-        // Ensure DOM is fully loaded before attaching event listeners and initializing the game
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize DOM elements after they are loaded
-            canvas = document.getElementById('gameCanvas');
-            ctx = canvas.getContext('2d');
-            hudTurnInfo = document.getElementById('turnInfo');
-            hudResourceInfo = document.getElementById('resourceInfo');
-            hudSelectedUnitInfo = document.getElementById('selectedUnitInfo');
-            hudObjectiveInfo = document.getElementById('objectiveInfo');
-            endTurnButton = document.getElementById('endTurnButton');
-            techTreeButton = document.getElementById('techTreeButton');
-            undoButton = document.getElementById('undoButton');
-            techTreeModal = document.getElementById('techTreeModal');
-            cityMenuModal = document.getElementById('cityMenuModal');
-            cityInteractionModal = document.getElementById('cityInteractionModal');
-            confirmEndTurnModal = document.getElementById('confirmEndTurnModal');
-            closeTechTreeButton = document.querySelector('.tech-tree-close');
-            closeCityMenuButton = document.querySelector('.city-menu-close'); 
-            confirmEndTurnYesButton = document.getElementById('confirmEndTurnYes');
-            confirmEndTurnNoButton = document.getElementById('confirmEndTurnNo');
-            dontAskAgainCheckbox = document.getElementById('dontAskAgainCheckbox'); 
-            buyMountainClimbingButton = document.getElementById('buyMountainClimbing');
-            buySwimmingButton = document.getElementById('buySwimming');
-            buyHorseRidingButton = document.getElementById('buyHorseRiding');
-            buyCarryingCapacity2Button = document.getElementById('buyCarryingCapacity2');
-            buyCarryingCapacity3Button = document.getElementById('buyCarryingCapacity3');
-            buyCarryingCapacity4Button = document.getElementById('buyCarryingCapacity4');
-            trainExplorerButton = document.getElementById('trainExplorerButton');
-            trainHorseRiderButton = document.getElementById('trainHorseRiderButton');
-            trainArcherButton = document.getElementById('trainArcherButton');
-            trainDefenderButton = document.getElementById('trainDefenderButton');
-            selectUnitFromCityButton = document.getElementById('selectUnitFromCity');
-            openCityMenuFromInteractionButton = document.getElementById('openCityMenuFromInteraction');
-            hudElement = document.getElementById('hud');
-            hamburgerMenuIcon = document.getElementById('hamburger-menu-icon');
-            optionsModal = document.getElementById('optionsModal');
-            closeOptionsButton = document.querySelector('.options-close');
-            giveUpButton = document.getElementById('giveUpButton'); 
-            saveLevelButton = document.getElementById('saveLevelButton');     
-            loadLevelButton = document.getElementById('loadLevelButton');     
-            saveInitialMapButton = document.getElementById('saveInitialMapButton');
-            loadInitialMapButton = document.getElementById('loadInitialMapButton');
-            techTreeFromCityButton = document.getElementById('techTreeFromCityButton');
-            messageBox = document.getElementById('messageBox');
-            winModal = document.getElementById('winModal');
-            winModalNewGameButton = document.getElementById('winModalNewGameButton'); 
-            winModalKeepPlayingButton = document.getElementById('winModalKeepPlayingButton'); 
-            nextLevelButton = document.getElementById('nextLevelButton'); 
-            unitsWithMovesList = document.getElementById('unitsWithMovesList');
-            loseModal = document.getElementById('loseModal'); 
-            loseReasonDisplay = document.getElementById('loseReason');
-            loseModalNewGameButton = document.getElementById('loseModalNewGameButton'); 
-            loseModalKeepPlayingButton = document.getElementById('loseModalKeepPlayingButton');
-
-            carryingCapacity2Item = document.getElementById('carryingCapacity2Item');
-            carryingCapacity3Item = document.getElementById('carryingCapacity3Item');
-            carryingCapacity4Item = document.getElementById('carryingCapacity4Item');
-
-            mountainClimbingCostSpan = document.getElementById('mountainClimbingCost');
-            swimmingCostSpan = document.getElementById('swimmingCost');
-            horseRidingCostSpan = document.getElementById('horseRidingCost');
-            carryingCapacity2CostSpan = document.getElementById('carryingCapacity2Cost');
-            carryingCapacity3CostSpan = document.getElementById('carryingCapacity3Cost');
-            carryingCapacity4CostSpan = document.getElementById('carryingCapacity4Cost');
-            explorerCostSpan = document.getElementById('explorerCost');
-            horseRiderCostSpan = document.getElementById('horseRiderCost');
-            archerCostSpan = document.getElementById('archerCost');
-            defenderCostSpan = document.getElementById('defenderCost');
-            archerTechCostSpan = document.getElementById('archerTechCost');
-            defenderTechCostSpan = document.getElementById('defenderTechCost');
-
-            buyArcherTechButton = document.getElementById('buyArcherTech');
-            buyDefenderTechButton = document.getElementById('buyDefenderTech');
-
-
-            canvas.addEventListener('mousedown', handleInteractionStart);
-            canvas.addEventListener('mousemove', handleInteractionMove); 
-            canvas.addEventListener('mouseup', handleInteractionEnd);
-            canvas.addEventListener('touchstart', handleInteractionStart, { passive: false });
-            canvas.addEventListener('touchmove', handleInteractionMove, { passive: false }); 
-            canvas.addEventListener('touchend', handleInteractionEnd, { passive: false });
-
-            endTurnButton.addEventListener('click', endTurn);
-            undoButton.addEventListener('click', undoLastAction);
-            techTreeButton.addEventListener('click', () => {
-                closeAllModals();
-                techTreeModal.style.display = 'flex';
-                updateAllUI();
-            });
-
-            closeTechTreeButton.addEventListener('click', () => {
-                closeAllModals();
-            });
-            closeCityMenuButton.addEventListener('click', () => {
-                closeAllModals();
-                selectedCity = null;
-            });
-            confirmEndTurnYesButton.addEventListener('click', () => {
-                proceedEndTurn();
-            });
-            confirmEndTurnNoButton.addEventListener('click', () => {
-                closeAllModals();
-            });
-
-            dontAskAgainCheckbox.addEventListener('change', () => {
-                dontAskAgainForEndTurn = dontAskAgainCheckbox.checked;
-                localStorage.setItem('dontAskAgainEndTurn', dontAskAgainForEndTurn);
-            });
-
-            hamburgerMenuIcon.addEventListener('click', () => {
-                closeAllModals();
-                optionsModal.style.display = 'flex';
-            });
-
-            closeOptionsButton.addEventListener('click', () => {
-                closeAllModals();
-            });
-
-            giveUpButton.addEventListener('click', () => { 
-                closeAllModals();
-                initGameDefaults(); 
-                showMessage("You gave up! Starting a new level.");
-            });
-            saveLevelButton.addEventListener('click', saveGameState); 
-            loadLevelButton.addEventListener('click', () => importGameState()); 
-            saveInitialMapButton.addEventListener('click', saveInitialMap); 
-            loadInitialMapButton.addEventListener('click', () => loadInitialMap());
-
-            techTreeFromCityButton.addEventListener('click', () => {
-                closeAllModals();
-                techTreeModal.style.display = 'flex';
-                updateAllUI();
-            });
-
-            winModalNewGameButton.addEventListener('click', () => { 
-                closeAllModals();
-                initGame(); 
-            });
-
-            winModalKeepPlayingButton.addEventListener('click', () => { 
-                closeAllModals();
-                hasWonAndKeptPlaying = true; 
-                hudObjectiveInfo.classList.add('objective-completed'); 
-                nextLevelButton.style.display = 'inline-block'; 
-                proceedEndTurn(); 
-            });
-
-            nextLevelButton.addEventListener('click', () => { 
-                initGameDefaults(); 
-            });
-
-            loseModalNewGameButton.addEventListener('click', () => {
-                closeAllModals();
-                initGame();
-            });
-
-            loseModalKeepPlayingButton.addEventListener('click', () => { 
-                closeAllModals();
-                hasLost = false; 
-                hasWonAndKeptPlaying = true; 
-                hudObjectiveInfo.classList.add('objective-completed'); 
-                nextLevelButton.style.display = 'inline-block'; 
-                proceedEndTurn(); 
-            });
-
-            window.addEventListener('click', (event) => {
-                if (event.target === techTreeModal || event.target === cityMenuModal || event.target === cityInteractionModal || event.target === confirmEndTurnModal || event.target === optionsModal || event.target === winModal || event.target === loseModal) {
-                    closeAllModals();
-                    selectedCity = null;
-                }
-            });
-
-            buyMountainClimbingButton.addEventListener('click', () => buyUpgrade('mountainClimbing'));
-            buySwimmingButton.addEventListener('click', () => buyUpgrade('swimming'));
-            buyHorseRidingButton.addEventListener('click', () => buyUpgrade('horseRiding'));
-            buyCarryingCapacity2Button.addEventListener('click', () => buyUpgrade('carryingCapacity2'));
-            buyCarryingCapacity3Button.addEventListener('click', () => buyUpgrade('carryingCapacity3'));
-            buyCarryingCapacity4Button.addEventListener('click', () => buyUpgrade('carryingCapacity4'));
-            buyArcherTechButton.addEventListener('click', () => buyUpgrade('archerTech'));
-            buyDefenderTechButton.addEventListener('click', () => buyUpgrade('defenderTech'));
-
-            trainExplorerButton.addEventListener('click', () => trainUnit('explorer'));
-            trainHorseRiderButton.addEventListener('click', () => trainUnit('horseRider'));
-            trainArcherButton.addEventListener('click', () => trainUnit('archer'));
-            trainDefenderButton.addEventListener('click', () => trainUnit('defender'));
-
-            selectUnitFromCityButton.addEventListener('click', () => {
-                closeAllModals();
-                if (selectedCity && map[selectedCity.y][selectedCity.x].unit) {
-                    saveStateForUndo();
-                    selectUnit(map[selectedCity.y][selectedCity.x].unit);
-                    updateHighlightTiles(selectedUnit); 
-                    updateAllUI();
-                }
-                selectedCity = null;
-            });
-
-            openCityMenuFromInteractionButton.addEventListener('click', () => {
-                closeAllModals();
-                if (selectedCity) {
-                    cityMenuModal.style.display = 'flex';
-                    updateAllUI();
-                }
-            });
-
-            initGame();
-
-            window.addEventListener('resize', () => {
-                const parentWidth = canvas.parentElement.clientWidth;
-                const parentHeight = canvas.parentElement.clientHeight;
-                const newSize = Math.min(parentWidth * 0.95, parentHeight * 0.75, MAP_SIZE * TILE_SIZE);
-                
-                canvas.style.width = `${newSize}px`;
-                canvas.style.height = `${newSize}px`;
-
-                hudElement.style.width = `${newSize}px`;
-                hudElement.style.maxWidth = `${newSize}px`;
-            });
-            window.dispatchEvent(new Event('resize'));
-        });
-    </script>
 </head>
 <body>
+    <div id="modeSelection">
+        <button id="classicModeBtn" class="mode-button active">Classic Mode</button>
+        <button id="zenModeBtn" class="mode-button">Zen Mode</button>
+    </div>
+    <div id="gameInfo">
+        <span id="score">Score: 0</span>
+        <span id="lives">Lives: 5</span>
+    </div>
     <canvas id="gameCanvas"></canvas>
-    <div id="hud">
-        <div id="hud-top-row">
-            <div id="turnInfo">Turn: 1</div>
-            <div id="resourceInfo">Stars: ★ 0</div>
-            <div id="objectiveInfo">Objective: </div>
-            <div class="button-group">
-                <button id="undoButton" class="game-button">Undo</button>
-                <button id="techTreeButton" class="game-button">Tech Tree</button>
-                <button id="nextLevelButton" class="game-button" style="display: none;">Next Level</button>
-                <button id="endTurnButton" class="game-button">End Turn</button>
-            </div>
-        </div>
-        <div id="hud-bottom-row">
-            <div id="selectedUnitInfo">Selected: None</div>
-        </div>
+    <div id="gameOverScreen" style="display: none;">
+        <h1>Game Over!</h1> <!-- Updated title here -->
+        <p>Your final score: <span id="finalScore">0</span></p>
+        <button id="restartButton">Play Again</button>
     </div>
 
-    <div id="hamburger-menu-icon">☰</div>
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-    <div id="optionsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button options-close">&times;</span>
-            <h2>Options</h2>
-            <div class="item">
-                <button id="giveUpButton" class="game-button">Give Up</button>
-            </div>
-            <div class="item">
-                <button id="saveLevelButton" class="game-button">Save Current Game</button>
-            </div>
-            <div class="item">
-                <button id="loadLevelButton" class="game-button">Load Saved Game</button>
-            </div>
-            <div class="item">
-                <button id="saveInitialMapButton" class="game-button">Save Initial Map</button>
-            </div>
-            <div class="item">
-                <button id="loadInitialMapButton" class="game-button">Load Initial Map</button>
-            </div>
-        </div>
-    </div>
+        // Get game info elements
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const classicModeBtn = document.getElementById('classicModeBtn');
+        const zenModeBtn = document.getElementById('zenModeBtn');
 
-    <div id="techTreeModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button tech-tree-close">&times;</span>
-            <h2>
-                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
-                City Actions 
-            </h2>
-            <div id="upgradesList">
-                <div class="item">
-                    <span>Mountain Climbing (Cost: <span id="mountainClimbingCost">1</span> Star)</span>
-                    <button id="buyMountainClimbing" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Swimming (Cost: <span id="swimmingCost">1</span> Star)</span>
-                    <button id="buySwimming" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Horse Riding (Cost: <span id="horseRidingCost">3</span> Stars)</span>
-                    <button id="buyHorseRiding" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Archery (Cost: <span id="archerTechCost">2</span> Stars)</span>
-                    <button id="buyArcherTech" class="game-button">Buy</button>
-                </div>
-                <div class="item">
-                    <span>Fortification (Cost: <span id="defenderTechCost">2</span> Stars)</span>
-                    <button id="buyDefenderTech" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity2Item">
-                    <span>Carrying Capacity Lvl 2 (Cost: <span id="carryingCapacity2Cost">1</span> Star)</span>
-                    <button id="buyCarryingCapacity2" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity3Item" style="display: none;">
-                    <span>Carrying Capacity Lvl 3 (Cost: <span id="carryingCapacity3Cost">2</span> Stars)</span>
-                    <button id="buyCarryingCapacity3" class="game-button">Buy</button>
-                </div>
-                <div class="item" id="carryingCapacity4Item" style="display: none;">
-                    <span>Carrying Capacity Lvl 4 (Cost: <span id="carryingCapacity4Cost">3</span> Stars)</span>
-                    <button id="buyCarryingCapacity4" class="game-button">Buy</button>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Game variables
+        let score = 0;
+        let lives = 5;
+        let gameRunning = false;
+        let lastFrameTime = 0;
+        let gameMode = 'classic'; // Default game mode
 
-    <div id="cityMenuModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button city-menu-close">&times;</span>
-            <h2>
-                <button id="techTreeFromCityButton" class="game-button">Tech Tree</button>
-                City Actions 
-            </h2>
-            <div id="cityActionsList">
-                <div class="item">
-                    <span>Train Explorer (Cost: <span id="explorerCost">1</span> Star)</span>
-                    <button id="trainExplorerButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Horse Rider (Cost: <span id="horseRiderCost">2</span> Stars)</span>
-                    <button id="trainHorseRiderButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Archer (Cost: <span id="archerCost">3</span> Stars)</span>
-                    <button id="trainArcherButton" class="game-button">Train</button>
-                </div>
-                <div class="item">
-                    <span>Train Defender (Cost: <span id="defenderCost">2</span> Stars)</span>
-                    <button id="trainDefenderButton" class="game-button">Train</button>
-                </div>
-            </div>
-        </div>
-    </div>
+        // Arrays to hold game objects
+        const fruits = [];
+        const slicedFruits = []; // Now holds a single SlicedFruit object per sliced item
+        const sliceTrails = []; // To draw the slicing line
+        const explosions = []; // New array for explosion effects
 
-    <div id="cityInteractionModal" class="modal">
-        <div class="modal-content">
-            <h2>What would you like to do?</h2>
-            <div class="button-group" style="justify-content: center;">
-                <button id="selectUnitFromCity" class="game-button">Select Unit</button>
-                <button id="openCityMenuFromInteraction" class="game-button">Open City Menu</button>
-            </div>
-        </div>
-    </div>
+        // Game settings
+        const FRUIT_EMOJIS = ['🍎', '🍏', '🍊', '🍋', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🍌', '🥝', '🥑', '🥥'];
+        const BOMB_EMOJI = '💣';
+        const GRAVITY = 0.3; // Gravity strength
+        const FRUIT_SIZE = 60; // Size of the emoji
+        const FRUIT_SPAWN_INTERVAL = 1000; // Milliseconds between fruit spawns
+        const MAX_FRUITS_ON_SCREEN = 5;
+        const SLICE_TRAIL_LENGTH = 10; // Number of points in the slice trail
+        const SLICE_TRAIL_FADE_TIME = 200; // Milliseconds for trail to fade
+        const SLICED_FRUIT_FADE_DURATION = 600; // Milliseconds for sliced fruit to fade out
+        const EXPLOSION_DURATION = 500; // Milliseconds for explosion particles to fade
 
-    <div id="confirmEndTurnModal" class="modal">
-        <div class="modal-content">
-            <h2>End Turn?</h2>
-            <p>Some units still have actions remaining. Are you sure you want to end your turn?</p>
-            <div id="unitsWithMovesList"></div>
-            <div class="checkbox-container">
-                <input type="checkbox" id="dontAskAgainCheckbox">
-                <label for="dontAskAgainCheckbox">Don't ask me again</label>
-            </div>
-            <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                <button id="confirmEndTurnYes" class="game-button">Yes</button>
-                <button id="confirmEndTurnNo" class="game-button">No</button>
-            </div>
-        </div>
-    </div>
+        // Mouse/Touch tracking variables
+        let isSlicing = false;
+        let sliceStart = { x: 0, y: 0 };
+        let sliceEnd = { x: 0, y: 0 };
+        let currentSlicePath = []; // Stores points for the current slice trail
 
-    <div id="messageBox"></div>
+        // Adjust canvas size to fit window
+        function resizeCanvas() {
+            canvas.width = window.innerWidth * 0.9;
+            canvas.height = window.innerHeight * 0.7;
+            // Ensure canvas dimensions are at least a minimum size for playability
+            if (canvas.width < 300) canvas.width = 300;
+            if (canvas.height < 400) canvas.height = 400;
+        }
 
-    <div id="winModal" class="modal">
-        <div class="modal-content">
-            <p>YOU WIN!</p>
-            <div class="button-group">
-                <button id="winModalNewGameButton" class="game-button">New Game</button>
-                <button id="winModalKeepPlayingButton" class="game-button">Keep Playing</button>
-            </div>
-        </div>
-    </div>
+        // Call resize on load and on window resize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-    <div id="loseModal" class="modal">
-        <div class="modal-content">
-            <p>GAME OVER!</p>
-            <p id="loseReason"></p> <!-- Added for the lose reason -->
-            <div class="button-group">
-                <button id="loseModalNewGameButton" class="game-button">New Game</button>
-                <button id="loseModalKeepPlayingButton" class="game-button">Keep Playing</button> <!-- Changed from Load Game -->
-            </div>
-        </div>
-    </div>
+        // Fruit Class
+        class Fruit {
+            constructor(x, y, emoji, isBomb = false) {
+                this.x = x;
+                this.y = y;
+                this.radius = FRUIT_SIZE / 2;
+                this.emoji = emoji;
+                this.vy = -Math.random() * 2 - 15; // Range -15 to -17
+                this.vx = (Math.random() - 0.5) * 1.5; // Range -0.75 to 0.75
+                this.isBomb = isBomb;
+                this.sliced = false;
+
+                if (this.isBomb) {
+                    this.hitboxRadius = this.radius * 0.8;
+                } else {
+                    this.hitboxRadius = this.radius * 1.2;
+                }
+            }
+
+            update(deltaTime) {
+                this.x += this.vx * deltaTime / 16;
+                this.y += this.vy * deltaTime / 16;
+                this.vy += GRAVITY * deltaTime / 16;
+
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx *= -0.8;
+                } else if (this.x + this.radius > canvas.width) {
+                    this.x = canvas.width - this.radius;
+                    this.vx *= -0.8;
+                }
+            }
+
+            draw() {
+                ctx.font = `${FRUIT_SIZE}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, this.x, this.y);
+            }
+
+            contains(px, py) {
+                const distSq = (px - this.x) * (px - this.x) + (py - this.y) * (py - this.y);
+                return distSq < this.hitboxRadius * this.hitboxRadius;
+            }
+        }
+
+        // Sliced Fruit Class (manages both halves)
+        class SlicedFruit {
+            constructor(fruit, sliceAngle) {
+                this.emoji = fruit.emoji;
+                this.radius = FRUIT_SIZE / 2;
+                this.isBomb = fruit.isBomb;
+                this.sliceAngle = sliceAngle;
+
+                const impulseStrength = 5; // Strength of the initial push apart
+                const perpendicularAngle = this.sliceAngle + Math.PI / 2; // Angle perpendicular to the slice line
+
+                // Initialize properties for the left half
+                this.leftHalf = {
+                    x: fruit.x,
+                    y: fruit.y,
+                    // Inherit original fruit's velocity, then add impulse
+                    vx: fruit.vx + impulseStrength * Math.cos(perpendicularAngle + Math.PI),
+                    vy: fruit.vy + impulseStrength * Math.sin(perpendicularAngle + Math.PI),
+                    rotation: Math.random() * Math.PI * 2,
+                    angularVelocity: (Math.random() - 0.5) * 0.4
+                };
+
+                // Initialize properties for the right half
+                this.rightHalf = {
+                    x: fruit.x,
+                    y: fruit.y,
+                    // Inherit original fruit's velocity, then add impulse
+                    vx: fruit.vx + impulseStrength * Math.cos(perpendicularAngle),
+                    vy: fruit.vy + impulseStrength * Math.sin(perpendicularAngle),
+                    rotation: Math.random() * Math.PI * 2,
+                    angularVelocity: (Math.random() - 0.5) * 0.4
+                };
+
+                this.creationTime = performance.now();
+            }
+
+            update(deltaTime) {
+                // Update left half
+                this.leftHalf.x += this.leftHalf.vx * deltaTime / 16;
+                this.leftHalf.y += this.leftHalf.vy * deltaTime / 16;
+                this.leftHalf.vy += GRAVITY * deltaTime / 16;
+                this.leftHalf.rotation += this.leftHalf.angularVelocity * deltaTime / 16;
+
+                // Update right half
+                this.rightHalf.x += this.rightHalf.vx * deltaTime / 16;
+                this.rightHalf.y += this.rightHalf.vy * deltaTime / 16;
+                this.rightHalf.vy += GRAVITY * deltaTime / 16;
+                this.rightHalf.rotation += this.rightHalf.angularVelocity * deltaTime / 16;
+            }
+
+            draw(currentTime) {
+                const age = currentTime - this.creationTime;
+                let alpha = 1 - (age / SLICED_FRUIT_FADE_DURATION);
+                if (alpha < 0) alpha = 0;
+                ctx.globalAlpha = alpha;
+
+                // Draw Left Half
+                ctx.save();
+                ctx.translate(this.leftHalf.x, this.leftHalf.y);
+                ctx.rotate(this.leftHalf.rotation);
+                ctx.rotate(-this.sliceAngle); // Align slice to vertical
+
+                ctx.beginPath();
+                const clipBuffer = 2; // Small buffer for clean edges
+                ctx.rect(-this.radius - clipBuffer, -this.radius - clipBuffer, this.radius + clipBuffer, FRUIT_SIZE + 2 * clipBuffer);
+                ctx.clip();
+                ctx.font = `${FRUIT_SIZE}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, 0, 0);
+                ctx.restore();
+
+                // Draw Right Half
+                ctx.save();
+                ctx.translate(this.rightHalf.x, this.rightHalf.y);
+                ctx.rotate(this.rightHalf.rotation);
+                ctx.rotate(-this.sliceAngle); // Align slice to vertical
+
+                ctx.beginPath();
+                ctx.rect(0, -this.radius - clipBuffer, this.radius + clipBuffer, FRUIT_SIZE + 2 * clipBuffer);
+                ctx.clip();
+                ctx.font = `${FRUIT_SIZE}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, 0, 0);
+                ctx.restore();
+
+                // Reset global alpha after drawing both halves
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Explosion Effect Class
+        class ExplosionParticle {
+            constructor(x, y, emoji, initialVx, initialVy) {
+                this.x = x;
+                this.y = y;
+                this.emoji = emoji;
+                this.vx = initialVx;
+                this.vy = initialVy;
+                this.creationTime = performance.now();
+                // Adjust size based on emoji type
+                if (this.emoji === '💥') {
+                    this.size = FRUIT_SIZE * 3; // Significantly larger for the bang (3x as requested)
+                } else {
+                    this.size = FRUIT_SIZE * 0.7; // Smaller size for cloud particles
+                }
+            }
+
+            update(deltaTime) {
+                this.x += this.vx * deltaTime / 16;
+                this.y += this.vy * deltaTime / 16;
+                this.vy += GRAVITY * deltaTime / 16; // Particles are also affected by gravity
+            }
+
+            draw(currentTime) {
+                const age = currentTime - this.creationTime;
+                let alpha = 1 - (age / EXPLOSION_DURATION);
+                if (alpha < 0) alpha = 0;
+                ctx.globalAlpha = alpha;
+
+                ctx.font = `${this.size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.emoji, this.x, this.y);
+                ctx.globalAlpha = 1; // Reset alpha for other drawings
+            }
+        }
+
+        class ExplosionEffect {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                this.creationTime = performance.now();
+
+                // Add the initial bang emoji
+                this.particles.push(new ExplosionParticle(x, y, '💥', 0, 0));
+
+                // Add smoke/cloud particles
+                const numClouds = 5 + Math.floor(Math.random() * 3); // 5-7 clouds
+                for (let i = 0; i < numClouds; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 5;
+                    this.particles.push(new ExplosionParticle(
+                        x, y, '💨',
+                        speed * Math.cos(angle),
+                        speed * Math.sin(angle)
+                    ));
+                }
+            }
+
+            update(deltaTime) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update(deltaTime);
+                    const age = performance.now() - this.particles[i].creationTime;
+                    if (age > EXPLOSION_DURATION) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            draw(currentTime) {
+                this.particles.forEach(p => p.draw(currentTime));
+            }
+
+            isFinished() {
+                return this.particles.length === 0;
+            }
+        }
+
+
+        // Function to spawn a new fruit
+        function spawnFruit() {
+            if (fruits.length >= MAX_FRUITS_ON_SCREEN) return;
+
+            const x = Math.random() * (canvas.width - FRUIT_SIZE * 2) + FRUIT_SIZE;
+            const y = canvas.height + FRUIT_SIZE / 2;
+
+            let isBomb = false;
+            if (gameMode === 'classic') {
+                isBomb = Math.random() < 0.15; // 15% chance to spawn a bomb in classic mode
+            }
+            // In Zen mode, isBomb remains false
+
+            const emoji = isBomb ? BOMB_EMOJI : FRUIT_EMOJIS[Math.floor(Math.random() * FRUIT_EMOJIS.length)];
+
+            fruits.push(new Fruit(x, y, emoji, isBomb));
+        }
+
+        let lastSpawnTime = 0;
+        function updateGame(currentTime) {
+            if (!gameRunning) return;
+
+            const deltaTime = currentTime - lastFrameTime;
+            lastFrameTime = currentTime;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (currentTime - lastSpawnTime > FRUIT_SPAWN_INTERVAL) {
+                spawnFruit();
+                lastSpawnTime = currentTime;
+            }
+
+            // Update and draw fruits
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+                fruit.update(deltaTime);
+                fruit.draw();
+
+                // Lives are lost only in Classic mode if a fruit is missed
+                if (gameMode === 'classic' && fruit.y > canvas.height + FRUIT_SIZE && !fruit.sliced) {
+                    if (!fruit.isBomb) { // Only lose life for unsliced fruits, not bombs
+                        lives--;
+                        livesDisplay.textContent = `Lives: ${lives}`;
+                    }
+                    fruits.splice(i, 1);
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                } else if (gameMode === 'zen' && fruit.y > canvas.height + FRUIT_SIZE && !fruit.sliced) {
+                    // In Zen mode, just remove the fruit if missed, no life lost
+                    fruits.splice(i, 1);
+                }
+            }
+
+            // Update and draw sliced fruits (now only one object per sliced item)
+            for (let i = slicedFruits.length - 1; i >= 0; i--) {
+                const slicedFruit = slicedFruits[i];
+                slicedFruit.update(deltaTime);
+                slicedFruit.draw(currentTime); // Pass current time for fading
+
+                // Remove if off-screen or faded out
+                const age = currentTime - slicedFruit.creationTime;
+                if ((slicedFruit.leftHalf.y > canvas.height + FRUIT_SIZE && slicedFruit.rightHalf.y > canvas.height + FRUIT_SIZE) || age > SLICED_FRUIT_FADE_DURATION) {
+                    slicedFruits.splice(i, 1);
+                }
+            }
+
+            // Update and draw explosions
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const explosion = explosions[i];
+                explosion.update(deltaTime);
+                explosion.draw(currentTime);
+                if (explosion.isFinished()) {
+                    explosions.splice(i, 1);
+                }
+            }
+
+            // Draw slice trails
+            for (let i = sliceTrails.length - 1; i >= 0; i--) {
+                const trail = sliceTrails[i];
+                const age = currentTime - trail.timestamp;
+                if (age > SLICE_TRAIL_FADE_TIME) {
+                    sliceTrails.splice(i, 1);
+                } else {
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${1 - (age / SLICE_TRAIL_FADE_TIME)})`;
+                    ctx.lineWidth = 5;
+                    ctx.lineCap = 'round';
+                    ctx.beginPath();
+                    ctx.moveTo(trail.path[0].x, trail.path[0].y);
+                    for (let j = 1; j < trail.path.length; j++) {
+                        ctx.lineTo(trail.path[j].x, trail.path[j].y);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        // Handle slicing logic
+        function handleSlice(currentX, currentY) {
+            if (!isSlicing) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;    // Ratio of actual canvas width to displayed width
+            const scaleY = canvas.height / rect.height;  // Ratio of actual canvas height to displayed height
+
+            // Adjust coordinates based on the scale
+            const adjustedX = (currentX - rect.left) * scaleX;
+            const adjustedY = (currentY - rect.top) * scaleY;
+
+
+            currentSlicePath.push({ x: adjustedX, y: adjustedY });
+            if (currentSlicePath.length > SLICE_TRAIL_LENGTH) {
+                currentSlicePath.shift();
+            }
+
+            sliceTrails.push({ path: [...currentSlicePath], timestamp: performance.now() });
+
+            for (let i = fruits.length - 1; i >= 0; i--) {
+                const fruit = fruits[i];
+                if (!fruit.sliced && fruit.contains(adjustedX, adjustedY)) { // Use adjusted coordinates for contains check
+                    fruit.sliced = true;
+
+                    if (fruit.isBomb) {
+                        lives--; // Only deduct one life for bomb
+                        livesDisplay.textContent = `Lives: ${lives}`;
+                        explosions.push(new ExplosionEffect(fruit.x, fruit.y)); // Create explosion
+                        if (lives <= 0) {
+                            endGame();
+                            return;
+                        }
+                    } else {
+                        score++;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                        // Calculate angle based on adjusted coordinates
+                        slicedFruits.push(new SlicedFruit(fruit, currentSlicePath.length >= 2 ? Math.atan2(currentSlicePath[currentSlicePath.length - 1].y - currentSlicePath[currentSlicePath.length - 2].y, currentSlicePath[currentSlicePath.length - 1].x - currentSlicePath[currentSlicePath.length - 2].x) : -Math.PI / 2));
+                    }
+
+                    fruits.splice(i, 1); // Remove the original fruit (or bomb)
+                }
+            }
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            isSlicing = true;
+            sliceStart = { x: e.clientX, y: e.clientY }; // Pass raw client coordinates
+            currentSlicePath = []; // Clear path for new slice
+            handleSlice(sliceStart.x, sliceStart.y);
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isSlicing) {
+                sliceEnd = { x: e.clientX, y: e.clientY }; // Pass raw client coordinates
+                handleSlice(sliceEnd.x, sliceEnd.y);
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isSlicing = false;
+            currentSlicePath = [];
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isSlicing = false;
+            currentSlicePath = [];
+        });
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isSlicing = true;
+            sliceStart = { x: e.touches[0].clientX, y: e.touches[0].clientY }; // Pass raw client coordinates
+            currentSlicePath = []; // Clear path for new slice
+            handleSlice(sliceStart.x, sliceStart.y);
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isSlicing) {
+                sliceEnd = { x: e.touches[0].clientX, y: e.touches[0].clientY }; // Pass raw client coordinates
+                handleSlice(sliceEnd.x, sliceEnd.y);
+            }
+        });
+
+        canvas.addEventListener('touchend', () => {
+            isSlicing = false;
+            currentSlicePath = [];
+        });
+
+        canvas.addEventListener('touchcancel', () => {
+            isSlicing = false;
+            currentSlicePath = [];
+        });
+
+        // Game state functions
+        function startGame() {
+            score = 0;
+            lives = 5;
+            fruits.length = 0;
+            slicedFruits.length = 0;
+            sliceTrails.length = 0;
+            explosions.length = 0; // Clear explosions on new game
+            scoreDisplay.textContent = `Score: ${score}`;
+            livesDisplay.textContent = `Lives: ${lives}`;
+            gameOverScreen.style.display = 'none';
+            gameRunning = true;
+            lastFrameTime = performance.now();
+            lastSpawnTime = performance.now();
+
+            // Set lives display visibility based on mode when starting game
+            if (gameMode === 'zen') {
+                livesDisplay.style.display = 'none';
+            } else {
+                livesDisplay.style.display = 'inline-block';
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        restartButton.addEventListener('click', startGame);
+
+        // Mode selection event listeners
+        classicModeBtn.addEventListener('click', () => {
+            gameMode = 'classic';
+            classicModeBtn.classList.add('active');
+            zenModeBtn.classList.remove('active');
+            // Always show lives in classic mode
+            livesDisplay.style.display = 'inline-block';
+            if (!gameRunning) {
+                lives = 5;
+                livesDisplay.textContent = `Lives: ${lives}`;
+            }
+        });
+
+        zenModeBtn.addEventListener('click', () => {
+            gameMode = 'zen';
+            zenModeBtn.classList.add('active');
+            classicModeBtn.classList.remove('active');
+            // Always hide lives in zen mode
+            livesDisplay.style.display = 'none';
+            if (!gameRunning) {
+                lives = 5; // Zen mode still uses lives, just no bombs to lose them
+                livesDisplay.textContent = `Lives: ${lives}`;
+            }
+        });
+
+        window.onload = startGame;
+    </script>
 </body>
 </html>
